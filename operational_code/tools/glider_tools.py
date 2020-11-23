@@ -1188,7 +1188,6 @@ def preprocess_dive(nc_file, GLIDER_CONFIG, traj_PAR, traj_KD490, traj_CHLA, gli
         MLD = MLD_min
  
     # PAR corrections and fitting
-
     PAR_FLAG = 0
     if 'CORR_DEPTH' in locals():
         use_insitu_par = False
