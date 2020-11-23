@@ -1,0 +1,18 @@
+if ( ! $?quiet ) then
+   echo 'Make sure that you are sourcing this file and not running it.'
+   echo 'To avoid seeing this message in future set the "quiet" shell variable like this:'
+   echo 'set quiet=1'
+endif
+
+setenv MODELS /home/ben/shared/Linux_desktop/local1/data/scratch/blo/AlterEco/
+# setenv UTILS /users/rsg/utils/code/legacy/utils
+
+set top_dir=$MODELS/pp_models/operational
+setenv PATH `env_clean -env PATH -add $top_dir/bin/$NERCARCH`
+setenv PATH `env_clean -env PATH -add $MODELS/utils/operational/bin/$NERCARCH`
+setenv PATH `env_clean -env PATH -add $MODELS/utils/operational/bin/`
+setenv LD_LIBRARY_PATH `env_clean -env LD_LIBRARY_PATH -add $top_dir/lib/$NERCARCH $UTILS/lib/$NERCARCH`
+setenv CPPFLAGS -I/users/rsg/utils/$NERCARCH/include
+setenv CFLAGS -L/users/rsg/utils/$NERCARCH/lib
+
+setenv proof_data $top_dir/data
