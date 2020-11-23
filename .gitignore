@@ -1,3 +1,4 @@
 .DS_Store
 S3*/
 test_data/*
+*.db
