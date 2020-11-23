@@ -9,4 +9,10 @@ date: Nov 2020
 license_text_file: LICENCE.txt
  
 # File(s) associated to this component
-about_resource: ALL
+about_resource: operational_code
+about_resource: test_data
+
+# Note:
+The following resources are explicitly NOT covered under a free distribution
+licence. All copyright for this component resides with PML.
+about_resource: pp_models
