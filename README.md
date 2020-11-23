@@ -9,7 +9,7 @@ explicitly not covered by the MIT licence and is NOT for redistribution.
 
 ## Authors
 * [**Ben Loveday**](mailto://Ben.Loveday@innoflair.com)
-* [**Ben Loveday**](mailto://tjsm@pml.ac.uk)
+* [**Tim Smyth**](mailto://tjsm@pml.ac.uk)
 
 ## Getting Started
 
