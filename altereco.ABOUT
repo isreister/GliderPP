@@ -1,0 +1,12 @@
+# Component information
+name: altereco
+description: code for processing glider data for primary production
+copyright: 2020 Ben Loveday
+license_spdx: MIT
+date: Nov 2020
+ 
+# Package IPR documentation
+license_text_file: LICENCE.txt
+ 
+# File(s) associated to this component
+about_resource: ALL

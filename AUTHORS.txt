@@ -1,0 +1,13 @@
+# Copyright holder
+Ben Loveday
+ 
+# List of development authors
+Ben Loveday, ben.loveday@innoflair.com
+
+# Contributory authors
+Tim Smyth (tjsm@pml.ac.uk)
+
+# Acknowledgements
+Test glider data was provided by Bastien Queste (UEA), Tom Hull (UEA/CEFAS), 
+Charlotte Williams (NOCL), Matt Toberman (SAMS), Mark Inall (SAMS) and Jan 
+Kaiser (UEA).
