@@ -17,21 +17,31 @@ def get_clean_pp(PFILE, Z_DEPTHS):
     # Morel91 outputs as g/C/m3/minute (default time step). Scale up to mg/day
     pp = np.asarray(pp_vars[1:,1]).astype(float)*1000.00*24*60
 
+    # screen out where calculation is deeper than glider
+    pp[pp_depth > max(Z_DEPTHS)+1] = np.nan
+
     # scrape impossible results
     pp[pp>1e8] = np.nan
-    pp[pp<0.0] = 0.0
+    pp[pp<0.0] = np.nan
 
-    # interpolated
-    pp_int = interp1d(pp_depth, pp, bounds_error=False, fill_value=0.0)(Z_DEPTHS)
-    
-    # integrated (prior to interpolation) 
-    pp_int_di = np.nansum(pp*abs(np.nanmean(pp_depth[0:-1]-pp_depth[1:])))
-    pp_int_di = np.asarray(pp_int_di).astype(float)
+    # check for empties
+    if np.all(np.isnan(pp)):
+        pp_int_di = np.nan
+        pp_int = Z_DEPTHS*np.nan
+    else:
+        # interpolate
+        pp_int = interp1d(pp_depth, pp, bounds_error=False)(Z_DEPTHS)
 
-    if pp_int_di < 0.0:
-        pp_int_di = 0.0
-    elif pp_int_di > 2000:
-        pp_int_di = np.nan # bad quality
+        # integrated (prior to interpolation) 
+        pp_int_di = np.nansum(pp*abs(np.gradient(pp_depth)))
+        pp_int_di = np.asarray(pp_int_di).astype(float)
+
+        # scale up to match integral values
+        pp_tmp = np.nansum(pp_int*abs(np.gradient(Z_DEPTHS)))
+        pp_int = pp_int * pp_int_di / pp_tmp
+
+        if pp_int_di < 0.0:
+            pp_int_di = np.nan
 
     pp_int_di = np.ones(len(pp_int))*pp_int_di
 
@@ -97,7 +107,7 @@ def create_netcdf_file(out_file, the_vars, metadata):
 if __name__ == "__main__":
 
     test_run = True # ok: 0,5
-    selected_gliders = 8
+    selected_gliders = -1
     output_path = os.path.join(os.getcwd(),'final_output')
 
     if not os.path.exists(output_path):

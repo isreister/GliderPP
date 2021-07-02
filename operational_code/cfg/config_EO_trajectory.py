@@ -33,6 +33,9 @@ License:        MIT Licence -- Copyright 2017 Plymouth Marine Laboratory
 '''
 import sys
 
+EO_username='bloveday'
+EO_password='V$nu$tu23'
+
 '''
 CCI: local DT
 {'source':'ESACCI_1KM',\
@@ -67,8 +70,8 @@ TRA_CONFIG = {'CHL' : {'source':'CMEMS',\
                        't_var':'time',\
                        't_ref':'1900-01-01 00:00:00',\
                        't_base':'days',\
-                       'EO_username':'bloveday',\
-                       'EO_password':'V$nu$tu23',\
+                       'EO_username':EO_username,\
+                       'EO_password':EO_password,\
                        'vars':['CHL'],\
                        'calc_vars':['CHL','ZEU'],\
                        'include' : True,\
@@ -87,8 +90,8 @@ TRA_CONFIG = {'CHL' : {'source':'CMEMS',\
                        't_var':'time',\
                        't_ref':'1900-01-01 00:00:00',\
                        't_base':'days',\
-                       'EO_username':'bloveday',\
-                       'EO_password':'V$nu$tu23',\
+                       'EO_username':EO_username,\
+                       'EO_password':EO_password,\
                        'vars':['ADG443'],\
                        'calc_vars':['ADG443'],\
                        'include' : False,\
@@ -107,8 +110,8 @@ TRA_CONFIG = {'CHL' : {'source':'CMEMS',\
                        't_var':'time',\
                        't_ref':'1900-01-01 00:00:00',\
                        't_base':'days',\
-                       'EO_username':'bloveday',\
-                       'EO_password':'V$nu$tu23',\
+                       'EO_username':EO_username,\
+                       'EO_password':EO_password,\
                        'vars':['APH443'],\
                        'calc_vars':['APH443'],\
                        'include' : False,\
@@ -127,8 +130,8 @@ TRA_CONFIG = {'CHL' : {'source':'CMEMS',\
                        't_var':'time',\
                        't_ref':'1900-01-01 00:00:00',\
                        't_base':'days',\
-                       'EO_username':'bloveday',\
-                       'EO_password':'V$nu$tu23',\
+                       'EO_username':EO_username,\
+                       'EO_password':EO_password,\
                        'vars':['ATOT443'],\
                        'calc_vars':['ATOT443'],\
                        'include' : False,\
@@ -147,8 +150,8 @@ TRA_CONFIG = {'CHL' : {'source':'CMEMS',\
                        't_var':'time',\
                        't_ref':'1950-01-01 00:00:00',\
                        't_base':'hours',\
-                       'EO_username':'bloveday',\
-                       'EO_password':'V$nu$tu23',\
+                       'EO_username':EO_username,\
+                       'EO_password':EO_password,\
                        'vars':['thetao','so','mlotst'],\
                        'calc_vars':['SST','SSS','MLD'],\
                        'include' : True,\
@@ -218,8 +221,8 @@ TRA_CONFIG = {'CHL' : {'source':'CMEMS',\
                        't_var':'time',\
                        't_ref':'1950-01-01 00:00:00',\
                        't_base':'days',\
-                       'EO_username':'bloveday',\
-                       'EO_password':'V$nu$tu23',\
+                       'EO_username':EO_username,\
+                       'EO_password':EO_password,\
                        'vars':['sla','adt','ugos','vgos','ugosa','vgosa'],\
                        'calc_vars':['UGOS','VGOS','UGOSA','VGOSA','SLA','ADT','EKE','MKE','TKE'],\
                        'include' : True,\

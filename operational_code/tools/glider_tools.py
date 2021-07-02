@@ -837,7 +837,7 @@ def fly_cube(variable, TRA_CONFIG, GLIDER_CONFIG, MODULE_DICT, nc_concat_file,\
                 max_Year = max_time.year
 
                 for YEAR in np.arange(min_Year, max_Year+1):
-                    logging.info('Interpolating climatoglogy for: '+str(YEAR))
+                    logging.info('Interpolating climatology for: '+str(YEAR))
                     # reconstruct time base for this year in format consistent
                     # with source timing
                     time_EO = []
@@ -1101,7 +1101,7 @@ def preprocess_dive(nc_file, GLIDER_CONFIG, traj_PAR, traj_KD490, traj_CHLA, gli
             print('Interpolating longitude')
             fn = interp1d(TIME[np.isfinite(LONGITUDE)],LONGITUDE[np.isfinite(LONGITUDE)],\
                  fill_value="extrapolate")
-            CORR_LONGITUDE = fn()
+            CORR_LONGITUDE = fn(TIME)
         except:
             pass
     
@@ -1421,10 +1421,6 @@ def preprocess_dive(nc_file, GLIDER_CONFIG, traj_PAR, traj_KD490, traj_CHLA, gli
             else:
                 print('Nighttime; no correction')
                 method_success = True  
-            # fail safe catch in case Xing does not work
-            if method_success==False and int(CONFIG_DICT['force_use_quench_method'])==0:
-                print('Xing failed; trying Biermann')
-                use_Biermann = True
             quench_method_used = 'Xing'
 
     if use_Biermann:
@@ -1467,13 +1463,6 @@ def preprocess_dive(nc_file, GLIDER_CONFIG, traj_PAR, traj_KD490, traj_CHLA, gli
               CORR_DEPTH,glider_bathy,CORR_CHLA,CORR_PAR,\
               correct_time=correct_time,to_UTC=0)
             quench_method_used = 'Hemsley'
-
-    # quick chl/par check
-    #time = np.nanmean(TIME)
-    #date = datetime.datetime(1970,1,1) +datetime.timedelta(seconds=int(time))
-    #print('CHLA CORR_CHLA CORR_PAR CORR_DEPTH E+ E- max(PAR)')
-    #for c1,c2,p1,d1 in zip(CHLA, CORR_CHLA, CORR_PAR, CORR_DEPTH):
-    #    print(c1, c2, p1, d1, time, date, E_0_plus, E_0_minus, np.nanmax(CORR_PAR))
 
     print('Writing out corrected data to: ' + nc_file)
     nct.write_corrected_to_file(nc_file,CORR_LATITUDE,'LATITUDE_CORRECTED','TIME')
@@ -1560,7 +1549,7 @@ def preprocess_dive(nc_file, GLIDER_CONFIG, traj_PAR, traj_KD490, traj_CHLA, gli
         except:
             pass
 
-        fname_plt = '/users/rsg/utils/web_visible_public_share/blo/files/AlterEco/PP_plots/test_plots/QUENCH_'+os.path.basename(nc_file.replace('.nc','.png'))
+        fname_plt = os.path.basename(nc_file.replace('.nc','.png'))
         try:
             plt.savefig(fname_plt)
         except:

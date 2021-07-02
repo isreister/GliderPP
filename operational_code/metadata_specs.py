@@ -5,7 +5,7 @@ import datetime
 
 def metadata_specs():
 
-    root_dir = '/home/ben/shared/Linux_desktop/data/datasets/Projects/AlterEco/'
+    root_dir = '/Volumes/PML_BACKUP/Linux_desktop/data/datasets/Projects/AlterEco/'
 
     pp_dir00 = os.path.join(root_dir,'Glider_data/BODC_pp_data/EGO/Cook_20171115/EGO_441_Cook')           # 1
     pp_dir01 = os.path.join(root_dir,'Glider_update_run/BODC_pp_data/EGO/EGO_496_Melonhead')              # 2

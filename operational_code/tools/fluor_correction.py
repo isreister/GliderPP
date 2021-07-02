@@ -207,7 +207,7 @@ def fluor_correction_Hem(GLIDER_CONFIG,hem_regress_files,hem_correct_files,\
 
 #---
 def fluor_correction_Bie(PROFILE,TIME,CHLA,ZEU,DEPTH,\
-                         verbose=False,logging=None,debug=0,fsz=12):
+                         verbose=False,logging=None):
     '''
     fluor correction from Biermann et al., 2015.
     '''
@@ -269,13 +269,35 @@ def fluor_correction_Bie(PROFILE,TIME,CHLA,ZEU,DEPTH,\
     return CORR_CHLA, method_success
 
 #---
-def fluor_correction_Xin(PROFILE,TIME,CHLA,MLD,DEPTH,\
-                         verbose=False,logging=None,debug=0,fsz=12):
+def fluor_correction_Xin(PROFILE, TIME, CHLA, MLD, DEPTH,\
+                         verbose=False, logging=None):
     '''
-     fluor correction from Xin et al., 2012.
+     fluor correction from Xing et al., 2012.
+
+     Ingests 1 or 2 dimensional profile data.
+        - 1D data is a single profile.
+        - 2D data is a series of contatenated profiles (usually used post 
+            interpolationmonto regular depths)
+
+     PROFILE (numpy array): the 1 or 2 dimensional dive number
+     TIME (numpy array): the 1 or 2 dimensional dive time
+     CHLA (numpy array): the 1 or 2 dimensional CHL
+     DEPTHn(numpy array): the 1 or 2 dimensional depth record
+
+     Returns:
+
+     CHLA_CORR: quenching corrected CHL, dimensionally consistent with CHL
+     method_success: flag to determine success. Only valid in 1D case.
+
+     Notes:
+
+     - Routine will accept 'downward' and 'upward' dives
+     - NaNs are not replaced
+
     '''
     method_success = True
     CORR_CHLA = CHLA.copy()
+
     # make 1d variables
     if len(np.shape(PROFILE)) == 2:
         profile1d     = np.nanmean(PROFILE,axis=0)
@@ -286,9 +308,11 @@ def fluor_correction_Xin(PROFILE,TIME,CHLA,MLD,DEPTH,\
         time1d        = TIME[:]
         dims          = 1
 
+    # loop to accommodate 2D data. 1D data only runs once.
     for ii in np.arange(0,dims):
         if verbose:
             print('profile: '+str(ii))
+
         if len(np.shape(PROFILE)) == 2:
             this_MLD = MLD[ii]
             this_DEPTH = DEPTH[:,ii]
@@ -332,7 +356,7 @@ def fluor_correction_Xin(PROFILE,TIME,CHLA,MLD,DEPTH,\
 
 #---
 def fluor_correction_Swa(PROFILE,TIME,CHLA,ZEU,DEPTH,SCATTER,\
-                         verbose=False,logging=None,debug=0,fsz=12):
+                         verbose=False,logging=None):
     '''
     fluor correction from Swart et al., 2015.
     '''
