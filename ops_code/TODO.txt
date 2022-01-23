@@ -1,0 +1,7 @@
+tidy tagged modules for PeP8 and form (pylint, flake, black)
+
+
+
+> generalise ./Tools/db_tools.py.add_new_file_row > BETTER, BUT PROB IMPROVABLE
+
+> ppglider_init_db.py TIDY but perhaps not the best code

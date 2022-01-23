@@ -1,0 +1,14 @@
+name: ppglider
+channels:
+  - conda-forge
+dependencies:
+  - python=3.8
+  - jupyter
+  - paramiko
+  - netcdf4
+  - scipy
+  - python-dateutil
+  - matplotlib
+  - ephem
+  - gsw
+  - pysolar

@@ -11,7 +11,7 @@ via the following link
 
 ## License
  
-Please see LICENCE.txt for MIT licence text. The contents of pp_models is
+Please see LICENCE.txt for MIT licence text. The contents of `models` is
 explicitly not covered by the MIT licence and is NOT for redistribution.
 
 ## Authors

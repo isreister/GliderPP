@@ -1,42 +1,23 @@
 #!/usr/bin/env python
 '''
 Purpose:	Stages MARS/NOC/BODC data from download directory to
-		preprocessed directory ready for ingestion into DT/NRT chains
-                Bins allowed variables if requested.
+            preprocessed directory ready for ingestion into the processing chain
+            Bins allowed variables if requested.
 
-Version: 	v2.0 05/2019
-
-Ver. hist:	Current version support Seaglider netCDF data and EGO format
-		gliders
+Version: 	v1.0 10/2021
 
 Author:		Ben Loveday, Plymouth Marine Laboratory
+            Time Smyth, Plymouth Marine Laboratory
 
-License:        MIT Licence -- Copyright 2017 Plymouth Marine Laboratory
-
-                Permission is hereby granted, free of charge, to any person
-                obtaining a copy of this software and associated documentation
-                files (the "Software"), to deal in the Software without
-                restriction, including without limitation the rights to use,
-                copy, modify, merge, publish, distribute, sublicense, and/or
-                sell copies of the Software, and to permit persons to whom the
-                Software is furnished to do so, subject to the following
-                conditions:
-
-                The above copyright notice and this permission notice shall be
-                included in all copies or substantial portions of the Software.
-
-                THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-                EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-                OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-                NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-                HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-                WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-                FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-                OTHER DEALINGS IN THE SOFTWARE.
+License:    See LICENCE.txt
 '''
 #-imports-----------------------------------------------------------------------
 from __future__ import print_function
-import argparse, os, sys, shutil, datetime, logging
+import os
+import shutil
+import datetime
+import logging
+import argparse
 import numpy as np
 import fnmatch
 import glob
@@ -111,7 +92,7 @@ DEFAULT_PLT_DIR = OUT_ROOT+'/Glider_data/plots/'
 DEFAULT_CFG_DIR = os.path.dirname(os.path.realpath(__file__))+'/cfg/'
 DEFAULT_CFG_FILE = DEFAULT_CFG_DIR+'config_main.py'
 
-#-ARGS--------------------------------------------------------------------------
+#-arguments---------------------------------------------------------------------
 
 PARSER = argparse.ArgumentParser()
 PARSER.add_argument('-cfg', '--config_file', type=str,\

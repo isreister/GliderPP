@@ -20,10 +20,12 @@
 #		defined.
 #
 #-------------------------------------------------------------------------------
-# Initialising
-database_DT=/home/ben/shared/Linux_desktop/local1/data/scratch/blo/AlterEco/operational_code/AlterEco_SQL_chain_database_DT.db
-database_NRT=/home/ben/shared/Linux_desktop/local1/data/scratch/blo/AlterEco/operational_code/AlterEco_SQL_chain_database_NRT.db
-# All: database params -- must match AlterEco_SQL_chain_database_initialise.py
+# Database initialising
+database_dir=../databases
+backup_dir=../backups
+database_name=PPglider_chain_database.db
+
+# All: database params -- must match PP_glider_database_initialise.py
 table_name=AlterEco_glider_processing_stages
 file_name_column=file_downloaded
 glider_type_column=glider_type
@@ -38,14 +40,17 @@ spectral_column=spectral
 corrected_column=corrections
 pp_column=primary_prod
 postproc_column=postproc
+
 # Downloading
-host=livftp.noc.ac.uk
-username=AlterEco
-password=Spr!ngM00n
-product_dir=/home/ben/shared/Linux_desktop/data
-download_dir=/home/ben/shared/Linux_desktop/data/datasets/Projects/AlterEco/Glider_update_run/BODC_data
-fmatch=.
-fexclude=nonetoexclude
+ftp_host=bens-mbp.fritz.box
+ftp_user=benloveday
+ftp_pwrd=Kaikoura23
+ftp_port=22
+ftp_path=/Users/benloveday/Desktop/Glider_FTP/Glider_data
+download_dir=../data
+fmatch=.nc
+fexclude=_R.nc
+
 # Staging:
 staged_dir=/home/ben/shared/Linux_desktop/data/datasets/Projects/AlterEco/Glider_update_run/BODC_staged_data
 # EO acquire:
