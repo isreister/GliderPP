@@ -1,4 +1,17 @@
-.DS_Store
-S3*/
-test_data/*
+# working directories
+/data
+/databases
+/backups
+/logs
+
+# data files
+*.nc
 *.db
+
+# Python build objects
+.ipynb_checkpoints
+**/__pycache__
+*.py[cod]
+
+#OSx rubbish
+.DS_Store
