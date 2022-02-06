@@ -4,10 +4,6 @@
 /backups
 /logs
 
-# data files
-*.nc
-*.db
-
 # Python build objects
 .ipynb_checkpoints
 **/__pycache__

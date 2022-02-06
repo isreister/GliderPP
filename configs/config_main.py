@@ -21,12 +21,12 @@
 #
 #-------------------------------------------------------------------------------
 # Database initialising
-database_dir=../databases
-backup_dir=../backups
+database_dir=databases
+backup_dir=backups
 database_name=PPglider_chain_database.db
 
 # All: database params -- must match PP_glider_database_initialise.py
-table_name=AlterEco_glider_processing_stages
+table_name=PPglider_processing_stages
 file_name_column=file_downloaded
 glider_type_column=glider_type
 glider_prefix_column=glider_prefix

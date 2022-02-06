@@ -12,7 +12,6 @@ Author:		Ben Loveday, Plymouth Marine Laboratory
 License:    See LICENCE.txt
 '''
 #-imports-----------------------------------------------------------------------
-from __future__ import print_function
 import os
 import shutil
 import datetime
@@ -22,6 +21,7 @@ import numpy as np
 import fnmatch
 import glob
 import warnings
+import sys
 
 # add paths/tools
 sys.path.append(os.path.dirname(os.path.realpath(__file__))+'/tools/')
@@ -43,7 +43,7 @@ def the_file_date(x):
     return val
 
 def process_file(database, input_file, output_file, GLIDER_CONFIG, \
-                 MODULE_DICT, interp_flag=False, logging=None, verbose=False):
+                 module_config, interp_flag=False, logging=None, verbose=False):
     '''
      Performs all necessary pre-processing operations on glider data
     '''
@@ -67,14 +67,14 @@ def process_file(database, input_file, output_file, GLIDER_CONFIG, \
             if interp_flag:
                 gt.interpolate_dive(split_file, \
                                 split_file.replace('.nc','_st_int.nc'),\
-                                GLIDER_CONFIG, MODULE_DICT,\
+                                GLIDER_CONFIG, module_config,\
                                 interp_flag=interp_flag,\
                                 logging=logging)
                 logging.info("Created interpolated: "+split_file)
             else:
                 gt.interpolate_dive(split_file, \
                                 split_file.replace('.nc','_st.nc'),\
-                                GLIDER_CONFIG, MODULE_DICT,\
+                                GLIDER_CONFIG, module_config,\
                                 interp_flag=interp_flag,\
                                 logging=logging)
                 logging.info("Created: "+split_file)
@@ -86,11 +86,11 @@ def process_file(database, input_file, output_file, GLIDER_CONFIG, \
     return good_flag
 
 #-default parameters------------------------------------------------------------
-OUT_ROOT = '/home/ben/shared/Linux_desktop/data/datasets/Projects/AlterEco/'
-DEFAULT_LOG_PATH = OUT_ROOT+'/Glider_data/logs/'
-DEFAULT_PLT_DIR = OUT_ROOT+'/Glider_data/plots/'
-DEFAULT_CFG_DIR = os.path.dirname(os.path.realpath(__file__))+'/cfg/'
-DEFAULT_CFG_FILE = DEFAULT_CFG_DIR+'config_main.py'
+OUT_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+DEFAULT_LOG_PATH = os.path.join(OUT_ROOT, 'logs')
+DEFAULT_PLT_PATH = os.path.join(OUT_ROOT, 'plots')
+DEFAULT_CFG_DIR = os.path.join(OUT_ROOT, 'configs')
+DEFAULT_CFG_FILE = os.path.join(DEFAULT_CFG_DIR, 'config_main.py')
 
 #-arguments---------------------------------------------------------------------
 
@@ -99,7 +99,7 @@ PARSER.add_argument('-cfg', '--config_file', type=str,\
                     default=DEFAULT_CFG_FILE,\
                     help='Config file')
 PARSER.add_argument('-p', '--plot_dir', type=str,\
-                    default=DEFAULT_PLT_DIR,\
+                    default=DEFAULT_PLT_PATH,\
                     help='Plot plotting directory')
 PARSER.add_argument('-v', '--verbose',\
                     action='store_true')
@@ -115,8 +115,12 @@ if __name__ == "__main__":
     re_stage = True
 
     # preliminary stuff
-    LOGFILE = ARGS.log_path+"AlterEco_staging_"+\
-              datetime.datetime.now().strftime('%Y%m%d_%H%M')+".log"
+    LOGFILE = os.path.join(ARGS.log_path,"PPglider_stage_"+\
+              datetime.datetime.now().strftime('%Y%m%d_%H%M')+".log")
+
+    # make required log directory if it does not exist
+    if not os.path.exists(os.path.abspath(ARGS.log_path)):
+        os.makedirs(ARGS.log_path)
 
     # set file logger
     try:
@@ -128,95 +132,67 @@ if __name__ == "__main__":
         print("Failed to set logger")
         sys.exit()
 
-    # read processing config file
-    MODULE_DICT = {}
+    # read config file
+    module_config = {}
     try:
-        logging.info("Reading configuration file...")
-        with open(ARGS.config_file) as myfile:
+        db.shout("Reading configuration file...", verbose=verbose)
+        with open(ARGS.config_file, 'r', encoding='UTF-8') as myfile:
             for line in myfile:
                 if '#' in line:
                     continue
-                else:
-                    name, var = line.partition("=")[::2]
-                    MODULE_DICT[name.strip()] = str(var.replace('\n', ''))
-    except:
-        logging.error("Failed to read configuration file")
-        sys.exit()
+                name, var = line.partition("=")[::2]
+                module_config[name.strip()] = str(var.replace('\n', ''))
+    except OSError as error :
+        print(error)
+        db.shout("Failed to read configuration file", verbose=verbose,
+          level='error')
 
-    master_database = MODULE_DICT['database_NRT'] # primary
-    all_databases = [MODULE_DICT['database_NRT'], MODULE_DICT['database_DT']]
+    # set database names
+    database_name = os.path.join(os.path.abspath(module_config['database_dir']),
+      module_config['database_name'])
 
     # get database statuses
-    glider_type, glider_prefix, glider_number, glider_name, file_names, \
+    glider_types, glider_prefixes, glider_numbers, glider_names, file_names, \
         is_staged, stage_dir, is_EO, is_preproc, is_spectral, is_corrected, \
-        is_pp, is_postproc = db.get_status(master_database,\
-        MODULE_DICT['table_name'],\
-        MODULE_DICT['glider_type_column'],\
-        MODULE_DICT['glider_prefix_column'],\
-        MODULE_DICT['glider_number_column'],\
-        MODULE_DICT['glider_name_column'],\
-        MODULE_DICT['file_name_column'],\
-        MODULE_DICT['stage_column'],\
-        MODULE_DICT['stage_dir_column'],\
-        MODULE_DICT['EO_column'],\
-        MODULE_DICT['preproc_column'],\
-        MODULE_DICT['spectral_column'],\
-        MODULE_DICT['corrected_column'],\
-        MODULE_DICT['pp_column'],\
-        MODULE_DICT['postproc_column'],\
+        is_pp, is_postproc = db.get_status(database_name,\
+        module_config['table_name'],\
+        module_config['glider_type_column'],\
+        module_config['glider_prefix_column'],\
+        module_config['glider_number_column'],\
+        module_config['glider_name_column'],\
+        module_config['file_name_column'],\
+        module_config['stage_column'],\
+        module_config['stage_dir_column'],\
+        module_config['EO_column'],\
+        module_config['preproc_column'],\
+        module_config['spectral_column'],\
+        module_config['corrected_column'],\
+        module_config['pp_column'],\
+        module_config['postproc_column'],\
         logging=logging, verbose=verbose)
 
-    count = -1
-    for file_name in file_names:
-
-        print(file_name)
-        count        = count + 1
+    for file_name, glider_prefix, glider_number, glider_name, glider_is_staged in \
+      zip(file_names, glider_prefixes, glider_numbers, glider_names, is_staged):
         
-        try:
-            preproc_file = file_name[0].replace(MODULE_DICT['download_dir'], \
-                                         MODULE_DICT['staged_dir'])
+        if 1==1:
+            preproc_file = file_name[0].replace(module_config['download_dir'], \
+                                         module_config['staged_dir'])
 
             if not os.path.exists(os.path.dirname(preproc_file)):
                 os.makedirs(os.path.dirname(preproc_file))
                 os.chmod(os.path.dirname(preproc_file), 0o777)
 
-            if int(is_staged[count][0]) == 1 and re_stage == False:
+            if int(glider_is_staged[0]) == 1 and re_stage == False:
                 db.shout(file_name[0]+' not updated & already staged; skipping',\
                      logging=logging, verbose=verbose)
             else:
-                if 'Melonhead' in file_name[0] or 'Orca' in file_name[0]:
-                    GLIDER_CONFIG = DEFAULT_CFG_DIR+'config_EGO_Melonhead.py'
-                    MODULE_DICT['gnumber'] = int(glider_number[count][0])         
-                    MODULE_DICT['gtype'] = glider_type[count][0]
-                    MODULE_DICT['gprefix'] = glider_prefix[count][0]
-
-                elif 'Eltanin' in file_name[0]:
-                    GLIDER_CONFIG = DEFAULT_CFG_DIR+'config_Eltanin_Xing.py'
-                    MODULE_DICT['gnumber'] = int(glider_number[count][0])         
-                    MODULE_DICT['gtype'] = glider_type[count][0]
-                    MODULE_DICT['gprefix'] = glider_prefix[count][0]
-       
-                elif glider_prefix[count][0] == 'sg':
-                    GLIDER_CONFIG = DEFAULT_CFG_DIR+'config_seaglider.py'
-                    MODULE_DICT['gnumber'] = int(glider_number[count][0])         
-                    MODULE_DICT['gtype'] = glider_type[count][0]
-                    MODULE_DICT['gprefix'] = glider_prefix[count][0]
-                elif glider_prefix[count][0] == 'UEA':
-                    GLIDER_CONFIG = DEFAULT_CFG_DIR+'config_UEA.py'
-                    MODULE_DICT['gnumber'] = int(glider_number[count][0])         
-                    MODULE_DICT['gtype'] = glider_type[count][0]
-                    MODULE_DICT['gprefix'] = glider_prefix[count][0]
-                elif glider_prefix[count][0] == 'EGO':
-                    GLIDER_CONFIG = DEFAULT_CFG_DIR+'config_EGO.py'
-                    MODULE_DICT['gnumber'] = int(glider_number[count][0])         
-                    MODULE_DICT['gtype'] = glider_type[count][0]
-                    MODULE_DICT['gprefix'] = glider_prefix[count][0]
-                else:
-                    print('No good config....skipping')
+                GLIDER_CONFIG = os.path.join(DEFAULT_CFG_DIR,f"config_{glider_prefix[0]}_{glider_number[0]}_{glider_name[0]}.py")
+                if not os.path.exists(os.path.abspath(GLIDER_CONFIG)):
+                    print(f"Config {GLIDER_CONFIG} does not exist; please create it!!")
                     continue
 
-                success = process_file(master_database, file_name[0], \
-                                   preproc_file, GLIDER_CONFIG, MODULE_DICT, \
+                success = process_file(database_name, file_name[0], \
+                                   preproc_file, GLIDER_CONFIG, module_config, \
                                    interp_flag=interp_flag, logging=logging, \
                                    verbose=verbose)
 
@@ -225,53 +201,52 @@ if __name__ == "__main__":
                          logging=logging, verbose=verbose)
 
                     #update database(s)
-                    for database in all_databases:
-                        today = "'"+\
-                            datetime.datetime.now().strftime('%Y%m%d_%H%M')+"'"
+                    today = "'"+\
+                        datetime.datetime.now().strftime('%Y%m%d_%H%M')+"'"
 
-                        conn, c = db.connectDB(database)
-                        c.execute("UPDATE {tn} SET {sn} = 1 WHERE {fn} = {fname}".\
-                                 format(tn=MODULE_DICT['table_name'],\
-                                 sn=MODULE_DICT['stage_column'],\
-                                 fn=MODULE_DICT['file_name_column'],\
-                                 fname='"'+file_name[0]+'"'))
+                    conn, c = db.connectDB(database_name)
+                    c.execute("UPDATE {tn} SET {sn} = 1 WHERE {fn} = {fname}".\
+                             format(tn=module_config['table_name'],\
+                             sn=module_config['stage_column'],\
+                             fn=module_config['file_name_column'],\
+                             fname='"'+file_name[0]+'"'))
 
-                        c.execute("UPDATE {tn} SET {sn} = {val} \
-                                 WHERE {fn} = {fname}".\
-                                 format(tn=MODULE_DICT['table_name'],\
-                                 sn=MODULE_DICT['stage_dir_column'],\
-                                 val='"'+os.path.dirname(preproc_file)+'"',\
-                                 fn=MODULE_DICT['file_name_column'],\
-                                 fname='"'+file_name[0]+'"'))
+                    c.execute("UPDATE {tn} SET {sn} = {val} \
+                             WHERE {fn} = {fname}".\
+                             format(tn=module_config['table_name'],\
+                             sn=module_config['stage_dir_column'],\
+                             val='"'+os.path.dirname(preproc_file)+'"',\
+                             fn=module_config['file_name_column'],\
+                             fname='"'+file_name[0]+'"'))
 
-                        c.execute("UPDATE {tn} SET {sn} = {val} \
-                                 WHERE {fn} = {fname}".\
-                                 format(tn=MODULE_DICT['table_name'],\
-                                 sn=MODULE_DICT['stage_column']+'_date',\
-                                 val=today,\
-                                 fn=MODULE_DICT['file_name_column'],\
-                                 fname='"'+file_name[0]+'"'))
+                    c.execute("UPDATE {tn} SET {sn} = {val} \
+                             WHERE {fn} = {fname}".\
+                             format(tn=module_config['table_name'],\
+                             sn=module_config['stage_column']+'_date',\
+                             val=today,\
+                             fn=module_config['file_name_column'],\
+                             fname='"'+file_name[0]+'"'))
 
-                        #zero the flags in case of re-processing
-                        c.execute("UPDATE {tn} SET {sn1} = 0, {sn2} = 0, {sn3} = 0,"
-                                  " {sn4} = 0, {sn5} = 0, {sn6} = 0"
-                                  " WHERE {fn} = {fname}".\
-                                  format(tn=MODULE_DICT['table_name'],\
-                                  sn1=MODULE_DICT['EO_column'],\
-                                  sn2=MODULE_DICT['preproc_column'],\
-                                  sn3=MODULE_DICT['spectral_column'],\
-                                  sn4=MODULE_DICT['corrected_column'],\
-                                  sn5=MODULE_DICT['pp_column'],\
-                                  sn6=MODULE_DICT['postproc_column'],\
-                                  fn=MODULE_DICT['file_name_column'],\
-                                  fname='"'+file_name[0]+'"'))
-                        conn.commit()
-                        conn.close()
+                    #zero the flags in case of re-processing
+                    c.execute("UPDATE {tn} SET {sn1} = 0, {sn2} = 0, {sn3} = 0,"
+                              " {sn4} = 0, {sn5} = 0, {sn6} = 0"
+                              " WHERE {fn} = {fname}".\
+                              format(tn=module_config['table_name'],\
+                              sn1=module_config['EO_column'],\
+                              sn2=module_config['preproc_column'],\
+                              sn3=module_config['spectral_column'],\
+                              sn4=module_config['corrected_column'],\
+                              sn5=module_config['pp_column'],\
+                              sn6=module_config['postproc_column'],\
+                              fn=module_config['file_name_column'],\
+                              fname='"'+file_name[0]+'"'))
+                    conn.commit()
+                    conn.close()
 
                 else:
                     db.shout(file_name[0]+' failed to stage', \
                              logging=logging, verbose=verbose)
-        except:
+        else:
             db.shout(file_name[0]+' failed to stage', \
                      logging=logging, verbose=True)
 #--EOF

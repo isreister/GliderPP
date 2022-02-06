@@ -64,9 +64,8 @@ import tools.db_tools as db
 #-default parameters------------------------------------------------------------
 OUT_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 DEFAULT_LOG_PATH = os.path.join(OUT_ROOT, 'logs')
-DEFAULT_BACKUP_PATH = os.path.join(OUT_ROOT, 'backups')
-DEFAULT_DATABASE_PATH = os.path.join(OUT_ROOT, 'databases')
-DEFAULT_CFG_FILE = os.path.join(OUT_ROOT, 'configs', 'config_main.py')
+DEFAULT_CFG_DIR = os.path.join(OUT_ROOT, 'configs')
+DEFAULT_CFG_FILE = os.path.join(DEFAULT_CFG_DIR, 'config_main.py')
 
 #-arguments---------------------------------------------------------------------
 PARSER = argparse.ArgumentParser()
@@ -125,6 +124,10 @@ if __name__ == "__main__":
     verbose = ARGS.verbose
     LOGFILE = os.path.join(ARGS.log_path,"PPglider_initialise_"+\
               datetime.datetime.now().strftime('%Y%m%d_%H%M')+".log")
+
+    # make required log directory if it does not exist
+    if not os.path.exists(os.path.abspath(ARGS.log_path)):
+        os.makedirs(ARGS.log_path)
 
     # set file logger
     try:
