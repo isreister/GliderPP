@@ -11,7 +11,7 @@ import linecache
 import math
 import numpy.ma as ma 
 import matplotlib.pyplot as plt
-import list_array_utils as la_utils
+from . import list_array_utils as la_utils
 
 def findmld(pres, temp, sal, floatnumber, yesplot=False, rec_cut=10, pmax=20, \
             verbose=False, logging=None):

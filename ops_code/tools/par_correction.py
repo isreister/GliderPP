@@ -38,7 +38,7 @@ import numpy as np
 import scipy.stats as st
 import matplotlib.pyplot as plt
 import logging
-import common_tools as ct
+from . import common_tools as ct
 
 #---
 def par_correction(PROFILE,TIME,LAT,LON,DEPTH,CHL,SCATTER,PAR,TEMP,SALT,WS,\

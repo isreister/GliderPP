@@ -41,12 +41,13 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import logging
-import common_tools as ct
 from netCDF4 import Dataset
-import glider_tools as gt
-import netCDF_tools as nct
 import gsw
 from scipy.interpolate import interp1d
+
+from . import common_tools as ct
+from . import glider_tools as gt
+from . import netCDF_tools as nct
 
 #---
 def fluor_correction_Hem(GLIDER_CONFIG,hem_regress_files,hem_correct_files,\

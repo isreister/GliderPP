@@ -34,11 +34,8 @@ License:        MIT Licence -- Copyright 2017 Plymouth Marine Laboratory
 '''
 #-imports-----------------------------------------------------------------------
 from netCDF4 import Dataset
-import sys
 import numpy as np
-import argparse
 import os
-import logging
 
 def ncdump(nc_fid, verb=True):
    '''

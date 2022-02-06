@@ -32,34 +32,26 @@ License:        MIT Licence -- Copyright 2017 Plymouth Marine Laboratory
                 OTHER DEALINGS IN THE SOFTWARE.
 '''
 #-imports-----------------------------------------------------------------------
-from __future__ import print_function
-import argparse, os, sys, shutil, datetime, logging
+import os, sys, shutil, datetime, logging
 from netCDF4 import Dataset
 import numpy as np
 import subprocess
 from scipy.interpolate import interp1d
 from scipy import stats
 import glob
-import fnmatch
 from scipy.interpolate import RegularGridInterpolator
 from dateutil.relativedelta import relativedelta
 from scipy.signal import savgol_filter
-import matplotlib
-matplotlib.use('Agg')
-import time
 import matplotlib.pyplot as plt
-import ephem
-from scipy.integrate import simps
 import gsw
 from matplotlib import gridspec
 
 # add paths/tools
-import netCDF_tools as nct
-import db_tools as db
-import mld_utils as mu
-import common_tools as ct
-import fluor_correction as fcorr
-import par_correction as parcorr
+from . import netCDF_tools as nct
+from . import database_tools as db
+from . import mld_utils as mu
+from . import common_tools as ct
+from . import fluor_correction as fcorr
 
 #-functions---------------------------------------------------------------------
 def write_trajectory_file(GLIDER_CONFIG, input_files, output_file,logging=None):
@@ -283,17 +275,16 @@ def concatenate_files(input_dir, CONFIG, logging = None):
     permit(concat_file)
     return good_flag
 
-def create_interpolated_netcdf_file(input_file, output_file, old_dim, \
+def create_interpolated_netcdf_file(dsin, output_file, old_dim, \
                                     interp_dim, dim_name, prof_number):
     '''
      Create a netCDF file ready to ingest interpolated variables. All variables
      that have a different dimension length to the interpolation variables
      are copied across untouched.
     '''
-    dsin = Dataset(input_file,'r')
 
     # create a new netCDF file for writing
-    dsout = Dataset(output_file,'w',format='NETCDF4_CLASSIC')
+    dsout = Dataset(output_file,'w', format='NETCDF4_CLASSIC')
 
     #Copy dimensions
     for dname, the_dim in dsin.dimensions.iteritems():
@@ -322,7 +313,6 @@ def create_interpolated_netcdf_file(input_file, output_file, old_dim, \
 
     # close the output file    
     dsout.close()
-    dsin.close()
 
 def get_profile_number(data_file):
     parse_name=os.path.basename(data_file).split('.')[0]
@@ -392,13 +382,31 @@ def turning_points(array):
                     idx_min.append((begin + i - 1) // 2)
             begin = i
             ps = s
+
+    # catches
+    if not idx_min:
+        idx_min = [0]
+
+    if not idx_max:
+        idx_min = [0]
+
+    # convert to array
+    idx_max = np.asarray(idx_max)
+    idx_min = np.asarray(idx_min)
+
+    # stop early misses
+    idx_min[idx_min < 10] = 0
+    idx_max[idx_max < 10] = 0
+
+    print(f"Split into {len(idx_max)+len(idx_min)} profiles")
+
     return idx_min, idx_max
 
 def split_dive_index(data_file, output_file, GLIDER_CONFIG, logging=None, \
                      profiles_nums_exist=False):
     '''
      Splits ingested file into dives and adds new profile number to record. 
-     Should support both EGO and SG formats.
+     Should support both EGO and non-EGO formats.
     '''
     debug = False
 
@@ -434,7 +442,8 @@ def split_dive_index(data_file, output_file, GLIDER_CONFIG, logging=None, \
         # fill gaps
         print('Interpolating....')
         fn = interp1d(x_var[np.isfinite(nominal_depth_var)],\
-                  nominal_depth_var[np.isfinite(nominal_depth_var)], fill_value="extrapolate")
+                  nominal_depth_var[np.isfinite(nominal_depth_var)],
+                  fill_value="extrapolate")
         ndv = fn(x_var)
 
         # iterate through file to find inversion points
@@ -448,9 +457,7 @@ def split_dive_index(data_file, output_file, GLIDER_CONFIG, logging=None, \
                                int(CONFIG_DICT['sgolay_smooth']))
         # find inversion points
         print('Finding turning points....')
-        idx_min,idx_max = turning_points(ndv_smooth)
-        idx_max = np.asarray(idx_max)
-        idx_min = np.asarray(idx_min)
+        idx_min, idx_max = turning_points(ndv_smooth)
 
         # reverse polarity if depth values are negative
         if np.nanmean(idx_max) < np.nanmean(idx_min):
@@ -523,7 +530,7 @@ def interpolate_dive(data_file, output_file, GLIDER_CONFIG, CONFIG,\
     CONFIG_DICT = read_config_file(GLIDER_CONFIG,logging=logging)
 
     data_fid = Dataset(data_file,'r')
-    nc_attrs, nc_dims, nc_vars, nc_groups = nct.ncdump(data_fid, verb=False)
+    nc_vars = list(data_fid.variables.keys())
     depth = data_fid.variables[CONFIG_DICT['depth_var']][:]
     prof_number = get_profile_number(data_file)
     
@@ -535,7 +542,7 @@ def interpolate_dive(data_file, output_file, GLIDER_CONFIG, CONFIG,\
         interp_depth = interp_bins[0:-1]
 
         # create a netCDF ready for population with interpolated variables
-        create_interpolated_netcdf_file(data_file, output_file,\
+        create_interpolated_netcdf_file(data_fid, output_file,\
                                     depth, interp_depth,\
                                     CONFIG_DICT['record_var'],prof_number)
 
@@ -547,7 +554,7 @@ def interpolate_dive(data_file, output_file, GLIDER_CONFIG, CONFIG,\
         ncprof_num[:] = np.ones(len(rec_var))*prof_number
         allowed_vars = list(CONFIG_DICT['allowed'].split(','))
 
-        for nc_var in nc_vars[0]:
+        for nc_var in nc_vars:
             # only process allowed variables          
             var_matches = set([nc_var]).intersection(set(allowed_vars))
 
@@ -599,6 +606,7 @@ def interpolate_dive(data_file, output_file, GLIDER_CONFIG, CONFIG,\
     else:
         output_file_final = output_file.replace('.nc','_bad.nc')
 
+    # this is evil! needs managing!
     bashCommand='ncks -O --mk_rec_dim '+CONFIG_DICT['record_var']+' '+ \
                 output_file + ' ' + output_file_final
 
@@ -1007,17 +1015,18 @@ def preprocess_dive(nc_file, GLIDER_CONFIG, traj_PAR, traj_KD490, traj_CHLA, gli
         use_Hemsley = True
 
     # -get the variable names for comparison to config list
-    nc_fid     = Dataset(nc_file, 'r')
-    nc_attrs, nc_dims, nc_vars, nc_groups = nct.ncdump(nc_fid, verb=False)
+    nc_fid  = Dataset(nc_file, 'r')
+    nc_vars = list(data_fid.variables.keys())
 
     # -get the vars-----------------------------------------------------------
     var_dict = {}
-    for varname in nc_vars[0]:
+    for varname in nc_vars:
+        # REMOVE
         # Dolomite has empty PAR record, but variable is there...
         if 'Dolomite_499_' in nc_file and '_PAR' in varname:
             print('PAR variable is empty....skipping')
             continue
-        # not all variables, esp scatterings, present in each file
+        # not all variables, esp. scatterings, present in each file
         for ii in np.arange(len(CONFIG_DICT['allowed_vars'].split(','))):
             if int(CONFIG_DICT['allowed_exact'].split(',')[ii]) == 0:
                 if CONFIG_DICT['allowed_vars'].split(',')[ii] in varname:
