@@ -1,0 +1,68 @@
+#ifndef _CHL_HH
+#define _CHL_HH
+
+#include "shared_tree.h"
+
+/**
+ * A class that stores and interpolates Chl values.
+ */
+class Chl
+{
+private:
+protected:
+   /**
+    * The chl values.
+    */
+   tree *data;
+
+   /**
+    * The default chl value to use if data is NULL.
+    */
+   float defaultValue;
+
+public:
+   /**
+    * Creates the chl object with a default value.
+    * @param defaultValue The default value to return as a chl value.
+    */
+   Chl (float defaultValue = 0.0);
+
+   /**
+    * Frees up resources used by the object.
+    */
+   virtual ~Chl (void);
+
+   /**
+    * Reads the data from the named file.
+    * @param filename The name of the file to load chl values from.
+    * @param conversionFactor The number to multiply each read value of chl by.
+    * @return true if the file failed to load or data is already loaded, false
+    *  otherwise.
+    */
+   bool readFile (const char *filename, float conversionFactor = 1.0);
+
+   /**
+    * Returns the value of Chl at the given chlorophyll and wavelength.
+    * @param minute The minute of the day (or data run).
+    * @param depth The depth at which to sample the chl value (m).
+    * @return The value of Chl.
+    */
+   float operator() (float minute, float depth) const;
+
+   /**
+    * Sets the default value of chlorophyll.
+    * @param defaultValue The value to use as the default.
+    */
+   inline void setDefault (float defaultValue = 0.0)
+   {
+      this->defaultValue = defaultValue;
+   }
+
+   /**
+    * Clears out the loaded data. This allows for different values to be loaded
+    *  instead or to use the default value.
+    */
+   void clear (void);
+};
+
+#endif /* #ifndef _CHL_HH */

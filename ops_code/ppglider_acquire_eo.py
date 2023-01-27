@@ -2,10 +2,10 @@
 '''
 Purpose:    Build EO data cube to support glider missions
 
-Version:    v1.0 10/2021
+Version:    v1.0 (10/2021)
 
 Author:     Ben Loveday, Plymouth Marine Laboratory
-            Time Smyth, Plymouth Marine Laboratory
+            Tim Smyth, Plymouth Marine Laboratory
 
 License:    See LICENCE.txt
 '''
@@ -22,6 +22,7 @@ import configparser
 import tools.database_tools as db
 import tools.glider_tools as gt
 import tools.download_tools as dlt
+from ppglider_acquire_eo_config import tra_config
 
 #-messages----------------------------------------------------------------------
 print('RUNNING: WARNINGS ARE SUPPRESSED')
@@ -37,17 +38,18 @@ DEFAULT_CFG_FILE = os.path.join(DEFAULT_CFG_DIR, 'config_main.ini')
 #-ARGS--------------------------------------------------------------------------
 
 PARSER = argparse.ArgumentParser()
-PARSER.add_argument('-cfg', '--config_file', type=str,\
-                    default=DEFAULT_CFG_FILE,\
+PARSER.add_argument('-cfg', '--config_file', type=str,
+                    default=DEFAULT_CFG_FILE,
                     help='Config file')
-PARSER.add_argument('-p', '--plot_dir', type=str,\
-                    default=DEFAULT_PLT_PATH,\
+PARSER.add_argument('-p', '--plot_dir', type=str,
+                    default=DEFAULT_PLT_PATH,
                     help='Plot plotting directory')
-PARSER.add_argument('-v', '--verbose',\
+PARSER.add_argument('-v', '--verbose',
                     action='store_true')
-PARSER.add_argument('-l', '--log_path', type=str,\
-                    default=DEFAULT_LOG_PATH,\
+PARSER.add_argument('-l', '--log_path', type=str,
+                    default=DEFAULT_LOG_PATH,
                     help='log file output path')
+
 ARGS = PARSER.parse_args()
 
 #-main--------------------------------------------------------------------------
@@ -60,7 +62,7 @@ if __name__ == "__main__":
                   # recreation
 
     # preliminary stuff
-    LOGFILE = os.path.join(ARGS.log_path,"PPglider_acquire_EO_"+\
+    LOGFILE = os.path.join(ARGS.log_path,"PPglider_acquire_EO_"+
               datetime.datetime.now().strftime('%Y%m%d_%H%M')+".log")
 
     # make required log directory if it does not exist
@@ -100,23 +102,20 @@ if __name__ == "__main__":
 
     # get the glider directories
     variables = module_config['EO_ACQUIRE']['variables'].split(',')
-   
+    matched_variables = np.zeros((len(is_EO_int), len(variables)))
+
     # keys of glider tag, not storage directory
-    glider_tags = [str(m)+'_'+str(n)+'_'+str(p) \
-                   for m,n,p in zip(db_dict["glider_prefix"],db_dict["glider_number"],db_dict["glider_name"])]
+    glider_tags = [str(m)+'_'+str(n)+'_'+str(p) 
+                   for m,n,p in zip(db_dict["glider_prefix"],
+                   db_dict["glider_number"],db_dict["glider_name"])]
 
     glider_prefix_array = np.asarray(db_dict["glider_prefix"]).astype(str)
     glider_number_array = np.asarray(db_dict["glider_number"]).astype(str)
 
+    glider_dirs = np.asarray(db_dict["staged_dir"]).astype(str)
+
     # loop through glider directories
-    for glider_tag in np.unique(glider_tags):
-
-        if os.path.exists("./oceandata.sci.gsfc.nasa.gov/"):
-            shutil.rmtree("./oceandata.sci.gsfc.nasa.gov/")
-
-        # REMOVE
-        if 'SCAPA' in glider_tag.upper() or 'OMG' in glider_tag.upper() or 'AMMONITE' in glider_tag.upper():
-            continue
+    for glider_tag, glider_dir in zip(np.unique(glider_tags), np.unique(glider_dirs)):
 
         GLIDER_CONFIG = os.path.join(DEFAULT_CFG_DIR,
             f"config_{glider_tag}.ini")
@@ -124,16 +123,6 @@ if __name__ == "__main__":
         if not os.path.exists(os.path.abspath(GLIDER_CONFIG)):
             print(f"Config {GLIDER_CONFIG} does not exist; please create it!!")
             continue
-
-        match_tag = '*'+glider_tag.split('_')[0]+glider_tag.split('_')[1]+'*.nc'
-
-        # find matching directory rows
-        matching_dirs = np.asarray([i for i,x in enumerate(glider_tags)\
-                                    if x == glider_tag]).astype(int)
-
-        # select directories containing data for this glider 
-        glider_tmp_dirs = np.unique([db_dict['staged_dir'][i] for i in matching_dirs])
-        glider_dirs = [x for x in glider_tmp_dirs if x is not None]
 
         # check for boundary file
         EO_dir = os.path.join(os.path.abspath(module_config['DIRECTORIES']['eo_dir']), glider_tag)
@@ -147,11 +136,7 @@ if __name__ == "__main__":
         trajectory_file = os.path.join(EO_dir, glider_tag+'_trajectory.nc')
 
         if not os.path.exists(trajectory_file):
-            existing_files = []
-            for glider_dir in glider_dirs:
-                existing_files.append(glob.glob(os.path.join(glider_dir, '*.nc')))
-            existing_files = [item for sublist in existing_files for item in sublist]
-            existing_files = sorted(existing_files)
+            existing_files = sorted(glob.glob(os.path.join(glider_dir, '*.nc')))
             print('Found '+str(len(existing_files))+' matching files')
 
             # argument too long if we do this all in one go; so...
@@ -171,12 +156,14 @@ if __name__ == "__main__":
                     os.remove(tmp_output_file)
             else:
                 os.rename(tmp_output_files[0], trajectory_file)
+            print('Made trajectory file')
         else:
             print('Found trajectory file')
         
+        matching_dirs = np.where(glider_dirs == glider_dir)
         num_dirs = len(matching_dirs)
-        sum_staged_keys = sum(is_staged_int[matching_dirs])[0]
-        sum_EO_keys = sum(is_EO_int[matching_dirs])[0]
+        sum_staged_keys = sum(is_staged_int[matching_dirs])
+        sum_EO_keys = sum(is_EO_int[matching_dirs])
 
         geo_update = False
         time_update = False
@@ -192,13 +179,13 @@ if __name__ == "__main__":
 
             lon_average, lat_average, \
                   time_average, profile_average = \
-                  gt.glider_average_values(trajectory_file, GLIDER_CONFIG, \
+                  gt.glider_average_values(trajectory_file, GLIDER_CONFIG, 
                   COORDS_LIST,logging=logging, verbose=verbose)
 
-            db.shout("Boundary data already up-to-date", logging=logging,\
+            db.shout("Boundary data already up-to-date", logging=logging,
                      verbose=verbose)
         else:
-            db.shout("Updating boundary data", logging=logging,\
+            db.shout("Updating boundary data", logging=logging,
                      verbose=verbose)
             COORDS_LIST = [0]*6
 
@@ -216,9 +203,9 @@ if __name__ == "__main__":
 
             geo_update, time_update, lon_average, lat_average, \
                   time_average, profile_average = \
-                  gt.define_boundary_file(trajectory_file, GLIDER_CONFIG, \
-                  COORDS_LIST, os.path.join(EO_dir,'boundaries.txt'),\
-                  float(module_config['date_pad']), logging=logging, verbose=verbose)
+                  gt.define_boundary_file(trajectory_file, GLIDER_CONFIG, 
+                  COORDS_LIST, os.path.join(EO_dir,'boundaries.txt'),
+                  float(module_config['EO_ACQUIRE']['date_pad']), logging=logging, verbose=verbose)
 
         # now get new boundary values
         with open(boundary_file, "r") as filestream:
@@ -229,15 +216,6 @@ if __name__ == "__main__":
 
         D0 = datetime.datetime.strptime(COORDS_LIST[4],'%Y-%m-%d %H:%M:%S')
         D1 = datetime.datetime.strptime(COORDS_LIST[5],'%Y-%m-%d %H:%M:%S')
-
-        # set data limits for DT chain:
-        if ARGS.proc_chain == 'DT':
-            # https://www.ecmwf.int/en/why-cant-i-download-era-interim-data-current-month
-            if (D1 - datetime.datetime.today()).total_seconds()/86400 > -90:
-                # this could be better.....could request data up to this point
-                # and check what is available
-                logging.info("Delayed time data not available")
-                continue
  
         Yref0,Mref0,Dref0,Jref0 = D0.strftime('%Y'),D0.strftime('%m'),\
                                   D0.strftime('%d'),D0.strftime('%j')
@@ -246,12 +224,12 @@ if __name__ == "__main__":
 
         # this tells us if relevant profiles for this glider have been 
         # processed against each EO variable.
-        matched_EO_keys = np.nansum(matched_variables[matching_dirs,:],axis=0)
+        matched_EO_keys = np.nansum(matched_variables[matching_dirs,:], axis=0)
 
         # loop through EO types to download/augment EO data cubes
         count = -1
         for variable in variables:
-            if not TRA_CONFIG[variable]['include']:
+            if not tra_config[variable]['include']:
                 print('Skipping cube generation for: '+variable)
                 continue
             else:
@@ -259,24 +237,24 @@ if __name__ == "__main__":
 
             count = count + 1
             get_cube = False         
-            var_file = os.path.join(EO_dir,variable + '_' + \
-                                    TRA_CONFIG[variable]['source']+'.nc')
+            var_file = os.path.join(EO_dir,variable + '_' + 
+                                    tra_config[variable]['source']+'.nc')
 
             if os.path.exists(var_file) and time_update and not geo_update:
                  get_cube=True
                  #check_times...
                  nc_fid = Dataset(var_file)
-                 cube_time = nc_fid.varables[TRA_CONFIG[variable]['t_var']][:]
+                 cube_time = nc_fid.varables[tra_config[variable]['t_var']][:]
  
-                 if TRA_CONFIG[variable]['t_base'] == 'seconds':
+                 if tra_config[variable]['t_base'] == 'seconds':
                      D0 = \
-                      datetime.datetime.strptime(TRA_CONFIG[variable]['t_ref'],\
-                      '%Y-%m-%d %H:%M:%S')+\
+                      datetime.datetime.strptime(tra_config[variable]['t_ref'],
+                      '%Y-%m-%d %H:%M:%S')+ \
                       datetime.timedelta(seconds=int(np.nanmax(cube_time)))
-                 elif TRA_CONFIG[variable]['t_base'] == 'days':
+                 elif tra_config[variable]['t_base'] == 'days':
                      D0 = \
-                      datetime.datetime.strptime(TRA_CONFIG[variable]['t_ref'],\
-                      '%Y-%m-%d %H:%M:%S')+\
+                      datetime.datetime.strptime(tra_config[variable]['t_ref'],
+                      '%Y-%m-%d %H:%M:%S')+ \
                       datetime.timedelta(days=int(np.nanmax(cube_time)))
                  else:
                      db.shout('Bad time base', logging=logging, verbose=verbose)
@@ -287,6 +265,7 @@ if __name__ == "__main__":
 
             if get_cube:
                 print('Running cube generation for: '+variable)
+
                 #get whole or partial new cube according to limits
                 db.shout('Sourcing '+variable, logging=logging, verbose=verbose)
 
@@ -295,14 +274,17 @@ if __name__ == "__main__":
 
                 # begin data cube grab
                 if 'ATMOS' in variable:
-                    if ARGS.proc_chain == 'NRT' and TRA_CONFIG[variable]['NRT_clim']:
-                        shutil.copy(TRA_CONFIG[variable]['clim_file'],var_file)
-                    else:  
-                        dlt.get_ecmwf(COORDS_LIST, D0, D1, var_file,\
+                    try:
+                        dlt.get_ecmwf(COORDS_LIST, D0, D1, var_file,
                                       logging=logging, verbose=verbose)
+                    except:
+                        if tra_config[variable]['NRT_clim']:
+                            shutil.copy(tra_config[variable]['clim_file'], var_file)
+                        else:
+                            print('Cannot process ATMOS, NRT data not available and no backup climatology set')
 
                 else:
-                    VAR_dir=module_config['DAP_dir']+'/'+variable
+                    VAR_dir=os.path.join(module_config['DIRECTORIES']['DAP_dir'], variable)
 
                     if os.path.exists(VAR_dir):
                         shutil.rmtree(VAR_dir)
@@ -310,62 +292,65 @@ if __name__ == "__main__":
                     os.makedirs(VAR_dir)
                     os.chmod(VAR_dir, 0o777)
 
-                    if TRA_CONFIG[variable]['local_path_root'] == None:
-                        db.shout('Downloading files via OpenDAP',\
+                    if tra_config[variable]['local_path_root'] == None:
+                        db.shout('Downloading files via OpenDAP',
                                  logging=logging, verbose=verbose)
-                        if TRA_CONFIG[variable]['source'] == 'CMEMS':
-                            match_files = dlt.get_CMEMS_remote(COORDS_LIST, D0,\
-                                          D1, TRA_CONFIG, variable, VAR_dir, \
-                                          logging=logging,\
+                        if tra_config[variable]['source'] == 'CMEMS':
+                            match_files = dlt.get_CMEMS_remote(COORDS_LIST, D0,
+                                          D1, tra_config, variable, VAR_dir, 
+                                          logging=logging,
                                           verbose=verbose)
                         else:
-                            match_files = dlt.get_remote(COORDS_LIST, D0, D1, \
-                                          TRA_CONFIG, variable, VAR_dir, \
-                                          logging=logging,\
-                                          verbose=verbose)
-                    else:
-                        db.shout('Collecting files locally',\
-                                 logging=logging, verbose=verbose)
-
-                        if ARGS.proc_chain == 'NRT' and \
-                           TRA_CONFIG[variable]['NRT_clim']:
-                            logging.info('Replaced with climatology')
-                        else:
-                            match_files = dlt.get_local(COORDS_LIST, D0, D1, \
-                                          TRA_CONFIG, variable, \
-                                          logging=logging, \
+                            match_files = dlt.get_remote(COORDS_LIST, D0, D1, 
+                                          tra_config, variable, VAR_dir, 
+                                          logging=logging,
                                           verbose=verbose)
 
-                    if ARGS.proc_chain == 'NRT' and \
-                      TRA_CONFIG[variable]['NRT_clim']:
-                        shutil.copy(TRA_CONFIG[variable]['clim_file'],var_file)
-                    else:
                         #update/replace existing cube
                         # have to fix concat here....later!!
-                        dlt.concat_files(TRA_CONFIG, variable, VAR_dir, \
-                          var_file, match_files, COORDS_LIST, logging=logging, \
+                        dlt.concat_files(tra_config, variable, VAR_dir, 
+                          var_file, match_files, COORDS_LIST, logging=logging, 
                           verbose=verbose)
+
+                    else:
+                        db.shout('Collecting files locally',
+                                 logging=logging, verbose=verbose)
+
+                        if tra_config[variable]['NRT_clim']:
+                            logging.info('Replaced with climatology')
+                            shutil.copy(tra_config[variable]['clim_file'], var_file)
+                        else:
+                            match_files = dlt.get_local(COORDS_LIST, D0, D1, 
+                                          tra_config, variable, 
+                                          logging=logging, 
+                                          verbose=verbose)
+
+                            #update/replace existing cube
+                            # have to fix concat here....later!!
+                            dlt.concat_files(tra_config, variable, VAR_dir, 
+                              var_file, match_files, COORDS_LIST, logging=logging, 
+                              verbose=verbose)
             else:
                 print('Data cube already present for '+variable)
-                db.shout('Data cube already present for '+variable,\
+                db.shout('Data cube already present for '+variable,
                          logging=logging, verbose=verbose)
 
         # now fly through and update database if successful
         for variable in variables:
 
-            if not TRA_CONFIG[variable]['include']:
+            if not tra_config[variable]['include']:
                 print('Skipping cube flying for: '+variable)
                 continue
             else:
                 print('Cube flying for: '+variable)
 
             # change surface time to be dataset compatible
-            adapted_time = gt.convert_time(time_average,\
-                                          TRA_CONFIG[variable]['t_ref'],\
-                                          TRA_CONFIG[variable]['t_base'])
+            adapted_time = gt.convert_time(time_average,
+                                          tra_config[variable]['t_ref'],
+                                          tra_config[variable]['t_base'])
             #define output file
-            nc_concat_file = os.path.join(EO_dir,variable + '_' + \
-                                    TRA_CONFIG[variable]['source']+'.nc')
+            nc_concat_file = os.path.join(EO_dir,variable + '_' + 
+                                    tra_config[variable]['source']+'.nc')
 
             nc_outfile = nc_concat_file.replace('.nc','_traj.nc')
 
@@ -379,44 +364,44 @@ if __name__ == "__main__":
             db.shout('Flying glider through: '+nc_concat_file, logging=logging, 
                       verbose=verbose)
 
-            if ARGS.proc_chain == 'NRT' and TRA_CONFIG[variable]['NRT_clim']:
+            if tra_config[variable]['NRT_clim']:
                 clim = True
             else:
                 clim = False
 
-            success = gt.fly_cube(variable, TRA_CONFIG, GLIDER_CONFIG, \
-                        module_config, nc_concat_file, nc_outfile, \
-                        adapted_time, time_average,\
-                        lon_average, lat_average, profile_average,\
-                        clim=clim, \
+            success = gt.fly_cube(variable, tra_config, GLIDER_CONFIG, 
+                        module_config, nc_concat_file, nc_outfile, 
+                        adapted_time, time_average,
+                        lon_average, lat_average, profile_average,
+                        clim=clim, 
                         logging=logging, verbose=verbose)
 
             if success:
                 # update database for entire record processed
-                db.shout(glider_tag+\
-                         ' now has trajectory for '+variable, \
+                db.shout(glider_tag+
+                         ' now has trajectory for '+variable, 
                          logging=logging, verbose=verbose)
 
                 today = "'"+datetime.datetime.now().strftime('%Y%m%d_%H%M')+"'"
                 print(database)
                 conn, c = db.connectDB(database)
                 for glider_dir in glider_dirs:
-                    c.execute("UPDATE {tn} SET {sn} = 1 WHERE {fn} = {fm}".\
-                              format(tn=module_config['table_name'],\
-                                     sn=module_config['EO_column'],\
-                                     fn=module_config['stage_dir_column'],\
+                    c.execute("UPDATE {tn} SET {sn} = 1 WHERE {fn} = {fm}".
+                              format(tn=module_config['table_name'],
+                                     sn=module_config['EO_column'],
+                                     fn=module_config['stage_dir_column'],
                                      fm='"'+glider_dir+'"'))
 
-                    c.execute("UPDATE {tn} SET {sn} = {val} WHERE {fn} = {fm}".\
-                              format(tn=module_config['table_name'],\
-                                     sn=module_config['EO_column']+'_date',\
-                                     val=today,\
-                                     fn=module_config['stage_dir_column'],\
+                    c.execute("UPDATE {tn} SET {sn} = {val} WHERE {fn} = {fm}".
+                              format(tn=module_config['table_name'],
+                                     sn=module_config['EO_column']+'_date',
+                                     val=today,
+                                     fn=module_config['stage_dir_column'],
                                      fm='"'+glider_dir+'"'))
                     conn.commit()
                 conn.close()
             else:
-                db.shout(glider_tag+\
-                         ' failed to generate trajectory for '+variable, \
+                db.shout(glider_tag+
+                         ' failed to generate trajectory for '+variable, 
                          logging=logging, verbose=verbose)
 #--EOF

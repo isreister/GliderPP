@@ -11,3 +11,6 @@
 
 #OSx rubbish
 .DS_Store
+
+#Data files
+*.nc

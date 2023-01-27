@@ -13,8 +13,9 @@ import argparse, os, sys, shutil, datetime, logging
 import subprocess
 import numpy as np
 import fnmatch
-from ecmwfapi import ECMWFDataServer
+import cdsapi
 from dateutil.relativedelta import relativedelta
+import pandas as pd
 
 from . import glider_tools as gt
 from . import database_tools as db
@@ -22,72 +23,59 @@ from . import database_tools as db
 
 def get_ecmwf(COORDS_LIST, D0, D1, var_file, clim=False, logging=None,\
         verbose=False):
-    server     = ECMWFDataServer()
-    area       = [float(COORDS_LIST[3]),\
-                  float(COORDS_LIST[0]),\
-                  float(COORDS_LIST[2]),\
-                  float(COORDS_LIST[1])] #N/W/S/E
 
-    ecmwf_dict = ecmwf_cfg(D0, D1, area, var_file, clim=clim)      
-    if verbose:
+    c       = cdsapi.Client()
+    area    = [float(COORDS_LIST[3]),\
+               float(COORDS_LIST[0]),\
+               float(COORDS_LIST[2]),\
+               float(COORDS_LIST[1])] #N/W/S/E
+
+    Dc = D0
+    while Dc < D1:
+        print(Dc)
+        ecmwf_dict = ecmwf_cfg(Dc, area)
         print(ecmwf_dict)
-    server.retrieve(ecmwf_dict)
+        print(var_file)
+        c.retrieve('reanalysis-era5-single-levels', ecmwf_dict, var_file)
+        Dc = D1 + datetime.timedelta(year=1)
 
-def ecmwf_cfg(D0,D1,area,outfile,clim=False):
-   # https://software.ecmwf.int/wiki/display/WEBAPI/Python+ERA-interim+examples
+def ecmwf_cfg(Dc,area):
 
-   date_formatted  = D0.strftime('%Y-%m-%d')+'/to/'+\
-                     D1.strftime('%Y-%m-%d')
-   area_formatted  = str(area[0])+'/'+\
+    area_formatted  = str(area[0])+'/'+\
                      str(area[1])+'/'+\
                      str(area[2])+'/'+\
                      str(area[3])
-   #                
-   #                 U_10m/V_10m/Cloud/MSLP/O3/tcwv/t2m/d2m
-   vars_form = "165.128/166.128/164.128/151.128/206.128/137.128/167.128/168.128"
 
-   if clim:
-      # need to alter date format
-      Diter=D0
-      date_formatted=str(D0.year)+str(D0.month).zfill(2)+'01'
-      while Diter <= D1:
-         Diter = Diter + relativedelta(months=1)
-         if Diter < D1:
-            date_formatted=date_formatted+'/'+str(Diter.year)\
-                           +str(Diter.month).zfill(2)+'01'
+    ecmwf_dict = {'product_type': 'reanalysis',
+                'format': 'netcdf',
+                'variable': [
+                '10m_u_component_of_wind',
+                '10m_v_component_of_wind', 
+                '2m_dewpoint_temperature',
+                '2m_temperature',
+                'mean_sea_level_pressure',
+                'total_cloud_cover',
+                'total_column_ozone',
+                'total_column_water_vapour'],
+                'year': str(Dc.year),
+                'month': ['01', '02', '03',
+                        '04', '05', '06',
+                        '07', '08', '09',
+                        '10', '11', '12'],
+                'day': ['01', '02', '03',
+                        '04', '05', '06',
+                        '07', '08', '09',
+                        '10', '11', '12',
+                        '13', '14', '15',
+                        '16', '17', '18',
+                        '19', '20', '21',
+                        '22', '23', '24',
+                        '25', '26', '27',
+                        '28', '29', '30', '31' ],
+                'time': ['12:00'],
+                'area': [area_formatted]}
 
-      ecmwf_dict = {'stream'    : "moda",
-                    'levtype'   : "sfc",
-                    'param'     : vars_form,
-                    'dataset'   : "interim",
-                    'step'      : "0",
-                    'expver'    : "1",
-                    'grid'      : "0.75/0.75",
-                    'date'      : date_formatted,
-                    'type'      : "an",
-                    'class'     : "ei",
-                    'area'      : area_formatted,
-                    'format'    : "netcdf",
-                    'target'    : outfile
-      }
-   else:
-      ecmwf_dict = {'stream'    : "oper",
-                    'levtype'   : "sfc",
-                    'param'     : vars_form,
-                    'dataset'   : "interim",
-                    'step'      : "0",
-                    'expver'    : "1",
-                    'grid'      : "0.75/0.75",
-                    'time'      : "00:00:00/06:00:00/12:00:00/18:00:00",
-                    'date'      : date_formatted,
-                    'type'      : "an",
-                    'class'     : "ei",
-                    'area'      : area_formatted,
-                    'format'    : "netcdf",
-                    'target'    : outfile
-      }
-
-   return ecmwf_dict
+    return ecmwf_dict
 
 
 def get_remote(COORDS_LIST, D0, D1, TRA_CONFIG, variable, VAR_dir, \
@@ -95,16 +83,22 @@ def get_remote(COORDS_LIST, D0, D1, TRA_CONFIG, variable, VAR_dir, \
     '''
      Gets remote data
     '''
+
+    tmp_dir = os.path.join(os.getcwd(),'tmp')
+    if os.path.exists(tmp_dir):
+        shutil.rmtree(tmp_dir)
+    os.makedirs(tmp_dir)
+    os.chmod(tmp_dir, 0o777)
+
     for dd in np.arange(D0, D1, datetime.timedelta(days=1)):
         this_date = dd.astype(datetime.datetime)
-        url = TRA_CONFIG[variable]['url_root']+\
+        url = TRA_CONFIG[variable]['dt_url_root']+\
               TRA_CONFIG[variable]['url_template']
         url = url.replace('$Y',this_date.strftime('%Y'))
         url = url.replace('$m',this_date.strftime('%m'))
         url = url.replace('$d',this_date.strftime('%d'))
         url = url.replace('$j',this_date.strftime('%j'))
 
-        tmp_dir = '/home/ben/shared/Linux_desktop/local1/data/scratch/blo/AlterEco/operational_code/'
         downloaded_tmp_file = VAR_dir + '/' \
                               + os.path.basename(url).replace('.nc.nc','.nc')
 
@@ -115,7 +109,7 @@ def get_remote(COORDS_LIST, D0, D1, TRA_CONFIG, variable, VAR_dir, \
                       COORDS_LIST[1]+" "+"-d lat,"+COORDS_LIST[2]+","+\
                       COORDS_LIST[3]+" "+"-v "+\
                       ",".join(TRA_CONFIG[variable]['vars'])+\
-                      " "+url+" -l "+tmp_dir + " " + os.path.basename(downloaded_tmp_file)
+                      " "+url+" "+ os.path.join(tmp_dir,os.path.basename(downloaded_tmp_file))
 
         db.shout(bashCommand, logging=logging, verbose=verbose)
 
@@ -167,6 +161,9 @@ def get_remote(COORDS_LIST, D0, D1, TRA_CONFIG, variable, VAR_dir, \
                        verbose=verbose)
             match_files.append(os.path.join(root, filename))
 
+    if os.path.exists(tmp_dir):
+        shutil.rmtree(tmp_dir)
+
     return sorted(match_files)
 
 def get_CMEMS_remote(COORDS_LIST, D0, D1, TRA_CONFIG, variable, VAR_dir, \
@@ -185,16 +182,16 @@ def get_CMEMS_remote(COORDS_LIST, D0, D1, TRA_CONFIG, variable, VAR_dir, \
         D1_format = this_date+\
                     datetime.timedelta(days=1)-datetime.timedelta(seconds=1)
         D1_format = D1_format.strftime('%Y-%m-%d %H:%M:%S')
-        outname = TRA_CONFIG[variable]['product_id']+\
+        outname = TRA_CONFIG[variable]['dt_product_id']+\
                   '_'+Dfname+'.nc'
     
         CMD="python "+\
           " -m motuclient "+\
           " --user '"+TRA_CONFIG[variable]['EO_username']+"'"+\
           " --pwd '"+TRA_CONFIG[variable]['EO_password']+"'"+\
-          " --motu '"+TRA_CONFIG[variable]['url_root']+"'"+\
-          " --service-id '"+TRA_CONFIG[variable]['service_id']+"'"+\
-          " --product-id '"+TRA_CONFIG[variable]['product_id']+"'"+\
+          " --motu '"+TRA_CONFIG[variable]['dt_url_root']+"'"+\
+          " --service-id '"+TRA_CONFIG[variable]['dt_service_id']+"'"+\
+          " --product-id '"+TRA_CONFIG[variable]['dt_product_id']+"'"+\
           " --longitude-min '"+str(COORDS_LIST[0])+"'"+\
           " --longitude-max '"+str(COORDS_LIST[1])+"'"+\
           " --latitude-min '"+str(COORDS_LIST[2])+"'"+\
@@ -211,14 +208,15 @@ def get_CMEMS_remote(COORDS_LIST, D0, D1, TRA_CONFIG, variable, VAR_dir, \
         db.shout(CMD, logging=logging, verbose=verbose)
         try:
             output = gt.execute(CMD,logging)
-            print(output)
+            db.shout(output, logging=logging, verbose=verbose)
             if 'Invalid date range' in str(output):
                 db.shout('Command unsuccessful (Invalid date range); trying alternate', logging=logging, verbose=verbose)
-                CMD = CMD.replace(TRA_CONFIG[variable]['service_id'],TRA_CONFIG[variable]['alt_service_id'])
-                CMD = CMD.replace(TRA_CONFIG[variable]['product_id'],TRA_CONFIG[variable]['alt_product_id'])
-                CMD = CMD.replace(TRA_CONFIG[variable]['url_root'],TRA_CONFIG[variable]['alt_url_root']) 
+                CMD = CMD.replace(TRA_CONFIG[variable]['nrt_service_id'],TRA_CONFIG[variable]['nrt_service_id'])
+                CMD = CMD.replace(TRA_CONFIG[variable]['nrt_product_id'],TRA_CONFIG[variable]['nrt_product_id'])
+                CMD = CMD.replace(TRA_CONFIG[variable]['nrt_url_root'],TRA_CONFIG[variable]['nrt_url_root']) 
                 db.shout(CMD, logging=logging, verbose=verbose)
-                gt.execute(CMD,logging)
+                output = gt.execute(CMD,logging)
+                db.shout(output, logging=logging, verbose=verbose)
                 db.shout('Command successful', logging=logging, verbose=verbose)
             else:
                 db.shout('Command successful', logging=logging, verbose=verbose)
@@ -235,7 +233,7 @@ def get_CMEMS_remote(COORDS_LIST, D0, D1, TRA_CONFIG, variable, VAR_dir, \
                      ' to file list', logging=logging, \
                        verbose=verbose)
             match_files.append(os.path.join(root, filename))
-
+    print(match_files)
     return sorted(match_files)
 
 def get_local(COORDS_LIST, D0, D1, TRA_CONFIG, variable, logging=None,\
@@ -260,7 +258,7 @@ def concat_files(TRA_CONFIG, variable, VAR_dir, var_file, match_files, \
                  COORDS_LIST, logging=None, verbose=False):
 
     #subset and add record dimension with sub-process
-    tmp_dir = VAR_dir+'/tmp/'
+    tmp_dir = os.path.join(os.getcwd(),'tmp')
     if os.path.exists(tmp_dir):
         shutil.rmtree(tmp_dir)
     os.makedirs(tmp_dir)
@@ -330,3 +328,5 @@ def concat_files(TRA_CONFIG, variable, VAR_dir, var_file, match_files, \
         db.shout('Command failed; proceeding to next variable', \
                  logging=logging, verbose=verbose)
 
+    if os.path.exists(tmp_dir):
+        shutil.rmtree(tmp_dir)

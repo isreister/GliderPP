@@ -5,10 +5,8 @@ Purpose:    Initialises sql database to manage AIS/Sentinel processing
 
 Version:    v1.0 (10/2021)
 
-Version:    v1.0 10/2021
-
 Author:     Ben Loveday, Plymouth Marine Laboratory
-            Time Smyth, Plymouth Marine Laboratory
+            Tim Smyth, Plymouth Marine Laboratory
 
 License:    See LICENCE.txt
 '''

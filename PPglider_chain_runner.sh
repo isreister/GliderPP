@@ -1,7 +1,7 @@
 #!/bin/bash
 '''
 # clean up first
-rm -r backups/ databases/ logs/ data/ staged/ EO_data/
+rm -r backups/ databases/ logs/ data/ staged/ EO_data/ dap/
 
 # instantiate database
 ./ops_code/ppglider_init_db.py -v

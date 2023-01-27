@@ -4,10 +4,10 @@ Purpose:	Stages MARS/NOC/BODC data from download directory to
             preprocessed directory ready for ingestion into the processing chain
             Bins allowed variables if requested.
 
-Version: 	v1.0 10/2021
+Version:    v1.0 (10/2021)
 
 Author:		Ben Loveday, Plymouth Marine Laboratory
-            Time Smyth, Plymouth Marine Laboratory
+            Tim Smyth, Plymouth Marine Laboratory
 
 License:    See LICENCE.txt
 '''

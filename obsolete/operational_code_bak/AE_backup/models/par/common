@@ -1,0 +1,95 @@
+set quiet=1
+
+setenv MODELS /home/scratch/models
+
+# This line required to be able to run the operational models
+source $MODELS/pp_models/operational/setup_operational
+
+# This line required to read the ncep and eptoms ancillary data, also for
+#  par_profile
+source $MODELS/utils/operational/setup_operational
+
+# Set the file to read the station information from (read stations.txt for an
+#  example. (change this if necessary)
+set station_file = "stations.txt"
+
+# Set the file to read the par LUT data from (this is used by par_profile to
+#  generate ed values spectrally).
+set par_lut_file = "par_lut.txt"
+
+# The directory where the input data files are stored. (change this if
+#  necessary)
+set input_dir = "data"
+
+# The directory where the output from par is stored. (change this if necessary)
+set ed_dir = "par_out"
+
+# The directory where the output from morel91 is stored. (change this if
+#  necessary)
+set morel91_dir = "morel91_out"
+
+# The directory where the output from platt92 is stored. (change this if
+#  necessary)
+set platt92_dir = "platt92_out"
+
+# The directory where the output from gplatt92 is stored. (change this if
+#  necessary)
+set gplatt92_dir = "gplatt92_out"
+
+# Where NCEP and EPTOMS data are stored. (this should not need to be changed)
+set met_data = /data/modis_ancillary/met_data2
+set ozone_data = /data/modis_ancillary/ozone_data2
+set ecmwf_data = $DATASETS/met_data/ECMWF
+
+# The time, depth and wavelength steps (used as applicable)
+set time_step = 30
+set depth_step = 5
+set wavelength_step = 5
+
+# The fracton of light that reaches the euphotic depth (0.01 for 1%, 0.001 for
+#  0.1% etc...)
+set euphotic_ratio = 0.001
+
+# The prefix and suffix of chl-value filenames.
+set chl_prefix = "chl."
+set chl_suffix = ".txt"
+# The prefix and suffix of alpha-value filenames.
+set alpha_prefix = "alpha."
+set alpha_suffix = ".txt"
+# The prefix and suffix of beta-value filenames.
+set beta_prefix = "beta."
+set beta_suffix = ".txt"
+# The prefix and suffix of pbm-value filenames.
+set pbm_prefix = "pbm."
+set pbm_suffix = ".txt"
+# The prefix and suffix of aph-value filenames.
+set aph_prefix = "st."
+set aph_suffix = ".aph.txt"
+# The prefix and suffix of phi-max-value filenames.
+set fmax_prefix = "st."
+set fmax_suffix = ".fmax.txt"
+# The prefix and suffix of ed-value filenames.
+set ed_prefix = "ed."
+set ed_suffix = ".txt"
+# The prefix and suffix of par versus time filenames. (this is used by
+#  par_profile to generate ed values over time).
+set parprof_prefix = "parprof."
+set parprof_suffix = ".txt"
+# The prefix and suffix of platt92-value filenames.
+set platt92_prefix = "p92."
+set platt92_suffix = ".txt"
+# The prefix and suffix of gplatt92-value filenames.
+set gplatt92_prefix = "gp92."
+set gplatt92_suffix = ".txt"
+# The prefix and suffix of morel91-value filenames.
+set morel91_prefix = "m91."
+set morel91_suffix = ".txt"
+# The prefix and suffix of platt92-value profile filenames.
+set p92_profile_prefix = "p92."
+set p92_profile_suffix = ".profile.txt"
+# The prefix and suffix of gplatt92-value profile filenames.
+set gp92_profile_prefix = "gp92."
+set gp92_profile_suffix = ".profile.txt"
+# The prefix and suffix of morel91-value profile filenames.
+set m91_profile_prefix = "m91."
+set m91_profile_suffix = ".profile.txt"
