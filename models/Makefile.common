@@ -1,14 +1,16 @@
+NERCARCH=local
 BUILD_DIR=build/$(NERCARCH)
-TOP_DIR=/local1/data/scratch/blo/AlterEco/pp_models/operational
+TOP_DIR=/mnt/c/Users/funkb/Documents/Python/GliderPP/models
 
 EXEC_DIR=$(TOP_DIR)/bin/$(NERCARCH)	# Destination for final built executables
 LIB_DIR=$(TOP_DIR)/lib/$(NERCARCH)	# Destination for final built libraries
 INC_DIR=$(TOP_DIR)/include		# Destination for include files
+INCLUDE_DIRS+=-I/mnt/c/Users/funkb/Documents/Python/GliderPP/models/include
 
 LINK_FLAGS=
 CPP_LINK_FLAGS=
 INCLUDE_DIRS=-I$(TOP_DIR)/include
-LIBRARY_DIRS=-L$(TOP_DIR)/lib/$(NERCARCH)
+LIBRARY_DIRS=-L$(TOP_DIR)/lib
 
 MAKE=make
 SHELL=/bin/csh
