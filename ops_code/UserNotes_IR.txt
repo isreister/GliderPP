@@ -1,0 +1,31 @@
+10/26/2024
+User Notes
+These are collected notes from Isaac Reister's experience using this data pipeline.
+
+Error: Ran into an an error with ppglider_autodownload.py tool. I don't think the FTP site is valid anymore. 
+Solution:
+I made a file called 'test_database_add.py' which adds the necessary text to the database that would have been added if the autodownloader had worked. I also had to download the EGO formatted .nc file and place it in GliderPP/data.
+Note that future users will need to change the file paths in 'test_database_add.py'. To doublecheck that records were inserted, (on a linux system with Ubuntu), a simple database GUI can be installed by opening the terminal and running the command: sudo apt-get install sqlitebrowser. I ran 'test_database_add.py' using the application Visual Studio Code.
+
+10/28/2025
+Error: You want ppglider environment to be easily accessible.
+
+Solution: ppglider is the environment that has been installed with the .yml file. To easily enter that environment (which is what you should do before running other gliderPP python code) you need to activate it. To set up an easy way to activate, the following should go be entered into the terminal: 
+ source ~/anaconda3/etc/profile.d/conda.sh
+ conda --version
+conda 25.5.1
+ conda activate ppglider
+(ppglider) funkb@funkb-Legion-Pro-5-16ARX8:~$ conda init bash
+
+You can now close the terminal. Now whenever you open a terminal in the future, you can run the command: 
+conda activate ppglider
+and you can now run the pipeline with hopefully most of the python packages installed.
+
+10/29/2025
+Changed file path names in config_main_ini, specifically, 'preproc_dir=' to the correct file path name for my system.
+
+
+
+
+
+
