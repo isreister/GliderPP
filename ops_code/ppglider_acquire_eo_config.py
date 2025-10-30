@@ -207,7 +207,7 @@ tra_config = {'CHL' : {'source':'CMEMS',
                        'calc_vars':['WSPD','CLOUD','MSLP','O3','TCWV','RH'],
                        'include' : True,
                        'NRT_clim' : True,
-                       'clim_file' : '/home/ben/shared/Linux_desktop/data/datasets/Projects/AlterEco/Climatologies/ECMWF_ERA_I/ERAI_monthly_climatology.nc'},
+                       'clim_file' : '/home/funkb/Documents/GliderPP/data/Climatology/ERAI_monthly_climatology.nc'},
 
              }
 #EOF
