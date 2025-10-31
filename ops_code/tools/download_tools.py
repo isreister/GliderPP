@@ -92,36 +92,65 @@ def get_remote(COORDS_LIST, D0, D1, TRA_CONFIG, variable, VAR_dir, \
 
     for dd in np.arange(D0, D1, datetime.timedelta(days=1)):
         this_date = dd.astype(datetime.datetime)
-        url = TRA_CONFIG[variable]['dt_url_root']+\
-              TRA_CONFIG[variable]['url_template']
-        url = url.replace('$Y',this_date.strftime('%Y'))
-        url = url.replace('$m',this_date.strftime('%m'))
-        url = url.replace('$d',this_date.strftime('%d'))
-        url = url.replace('$j',this_date.strftime('%j'))
+        url = TRA_CONFIG[variable]['dt_url_root'] + TRA_CONFIG[variable]['url_template']
+        url = url.replace('$Y', this_date.strftime('%Y'))
+        url = url.replace('$m', this_date.strftime('%m'))
+        url = url.replace('$d', this_date.strftime('%d'))
+        url = url.replace('$j', this_date.strftime('%j'))
 
-        downloaded_tmp_file = VAR_dir + '/' \
-                              + os.path.basename(url).replace('.nc.nc','.nc')
+        downloaded_tmp_file = os.path.join(
+            VAR_dir, os.path.basename(url).replace('.nc.nc', '.nc')
+        )
 
         if os.path.exists(downloaded_tmp_file):
             os.remove(downloaded_tmp_file)
 
-        bashCommand = "ncks -O -D 1 -d lon,"+COORDS_LIST[0]+","+\
-                      COORDS_LIST[1]+" "+"-d lat,"+COORDS_LIST[2]+","+\
-                      COORDS_LIST[3]+" "+"-v "+\
-                      ",".join(TRA_CONFIG[variable]['vars'])+\
-                      " "+url+" "+ os.path.join(tmp_dir,os.path.basename(downloaded_tmp_file))
+        # ---------------------------------------
+        # NEW: Download via wget using Earthdata cookies
+        # ---------------------------------------
+        cookie_file = os.path.expanduser("~/.urs_cookies")
+        netrc_file = os.path.expanduser("~/.netrc")
+        local_download = os.path.join(tmp_dir, os.path.basename(downloaded_tmp_file))
+
+        bashCommand = (
+            f"wget --quiet --load-cookies {cookie_file} "
+            f"--save-cookies {cookie_file} --keep-session-cookies "
+            f"--netrc-file {netrc_file} -O {local_download} {url}"
+        )
 
         db.shout(bashCommand, logging=logging, verbose=verbose)
-
         try:
-            gt.execute(bashCommand,logging)
-            gt.permit(os.path.join(tmp_dir,os.path.basename(downloaded_tmp_file)))
-            db.shout('Process succeeded', logging=logging, verbose=verbose)
-        except:
-            db.shout('Process failed', logging=logging, verbose=verbose)
-        
-        os.rename(os.path.join(tmp_dir,os.path.basename(downloaded_tmp_file)), downloaded_tmp_file)
+            gt.execute(bashCommand, logging)
+            gt.permit(local_download)
+            db.shout('Download succeeded', logging=logging, verbose=verbose)
+        except Exception as e:
+            db.shout(f'Download failed: {e}', logging=logging, verbose=verbose)
+            continue
+
+        # ---------------------------------------
+        # Now process the *local* file with ncks
+        # ---------------------------------------
+        bashCommand = (
+            "ncks -O -D 1 "
+            f"-d lon,{COORDS_LIST[0]},{COORDS_LIST[1]} "
+            f"-d lat,{COORDS_LIST[2]},{COORDS_LIST[3]} "
+            f"-v {','.join(TRA_CONFIG[variable]['vars'])} "
+            f"{local_download} {os.path.join(tmp_dir, os.path.basename(downloaded_tmp_file))}"
+        )
+
+        db.shout(bashCommand, logging=logging, verbose=verbose)
+        try:
+            gt.execute(bashCommand, logging)
+            gt.permit(os.path.join(tmp_dir, os.path.basename(downloaded_tmp_file)))
+            db.shout('Subset succeeded', logging=logging, verbose=verbose)
+        except Exception as e:
+            db.shout(f'Subset failed: {e}', logging=logging, verbose=verbose)
+            continue
+
+        os.rename(os.path.join(tmp_dir, os.path.basename(downloaded_tmp_file)), downloaded_tmp_file)
         os.chmod(downloaded_tmp_file, 0o777)
+
+
         
         # add time dimension
         try:
@@ -185,7 +214,7 @@ def get_CMEMS_remote(COORDS_LIST, D0, D1, TRA_CONFIG, variable, VAR_dir, \
         outname = TRA_CONFIG[variable]['dt_product_id']+\
                   '_'+Dfname+'.nc'
     
-        CMD="python "+\
+        motu_cmd = "python "+\
           " -m motuclient "+\
           " --user '"+TRA_CONFIG[variable]['EO_username']+"'"+\
           " --pwd '"+TRA_CONFIG[variable]['EO_password']+"'"+\
@@ -203,7 +232,9 @@ def get_CMEMS_remote(COORDS_LIST, D0, D1, TRA_CONFIG, variable, VAR_dir, \
           " --depth-max '"+str(TRA_CONFIG[variable]['depth_range'][1])+"'"+\
           " --out-dir '"+VAR_dir+'/'+"'"+\
           " --out-name '"+outname+"'"
-
+        
+        #build a command that works for copernicus marine toolbox
+        CMD = f"copernicusmarine subset --motu-api-request \"{motu_cmd}\""
         this_date = this_date + datetime.timedelta(days=1)
         db.shout(CMD, logging=logging, verbose=verbose)
         try:
