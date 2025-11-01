@@ -16,6 +16,7 @@ import fnmatch
 import cdsapi
 from dateutil.relativedelta import relativedelta
 import pandas as pd
+import code
 
 from . import glider_tools as gt
 from . import database_tools as db
@@ -195,76 +196,89 @@ def get_remote(COORDS_LIST, D0, D1, TRA_CONFIG, variable, VAR_dir, \
 
     return sorted(match_files)
 
-def get_CMEMS_remote(COORDS_LIST, D0, D1, TRA_CONFIG, variable, VAR_dir, \
-               logging=None, verbose=False):
+import os, fnmatch, datetime, subprocess, sys
 
-    # set variables
-    v_string=' --variable '
-    all_variables = ' '
-    for vv in TRA_CONFIG[variable]['vars']:
-        all_variables=v_string+"'"+vv+"'"+all_variables
+def get_CMEMS_remote(COORDS_LIST, D0, D1, TRA_CONFIG, variable, VAR_dir, env_name="ppglider_cm", logging=None, verbose=False):
+    """
+    Download CMEMS data using Copernicus Marine Toolbox.
 
+    Parameters:
+        COORDS_LIST: [lon_min, lon_max, lat_min, lat_max]
+        D0: datetime start
+        D1: datetime end
+        TRA_CONFIG: dict with dataset configuration
+        variable: str, e.g., 'CHL'
+        VAR_dir: directory to store downloaded files
+        env_name: conda environment where copernicusmarine is installed
+        logging, verbose: optional
+
+    Returns:
+        Sorted list of downloaded NetCDF files
+    """
+
+    os.makedirs(VAR_dir, exist_ok=True)
     this_date = D0
+    
     while this_date <= D1:
         Dfname = this_date.strftime('%Y-%m-%d')
         D0_format = this_date.strftime('%Y-%m-%d %H:%M:%S')
-        D1_format = this_date+\
-                    datetime.timedelta(days=1)-datetime.timedelta(seconds=1)
-        D1_format = D1_format.strftime('%Y-%m-%d %H:%M:%S')
-        outname = TRA_CONFIG[variable]['dt_product_id']+\
-                  '_'+Dfname+'.nc'
-    
-        motu_cmd = "python "+\
-          " -m motuclient "+\
-          " --user '"+TRA_CONFIG[variable]['EO_username']+"'"+\
-          " --pwd '"+TRA_CONFIG[variable]['EO_password']+"'"+\
-          " --motu '"+TRA_CONFIG[variable]['dt_url_root']+"'"+\
-          " --service-id '"+TRA_CONFIG[variable]['dt_service_id']+"'"+\
-          " --product-id '"+TRA_CONFIG[variable]['dt_product_id']+"'"+\
-          " --longitude-min '"+str(COORDS_LIST[0])+"'"+\
-          " --longitude-max '"+str(COORDS_LIST[1])+"'"+\
-          " --latitude-min '"+str(COORDS_LIST[2])+"'"+\
-          " --latitude-max '"+str(COORDS_LIST[3])+"'"+\
-          " --date-min '"+D0_format+"'"+\
-          " --date-max '"+D1_format+"'"+\
-          all_variables+\
-          " --depth-min '"+str(TRA_CONFIG[variable]['depth_range'][0])+"'"+\
-          " --depth-max '"+str(TRA_CONFIG[variable]['depth_range'][1])+"'"+\
-          " --out-dir '"+VAR_dir+'/'+"'"+\
-          " --out-name '"+outname+"'"
-        
-        #build a command that works for copernicus marine toolbox
-        CMD = f"copernicusmarine subset --motu-api-request \"{motu_cmd}\""
-        this_date = this_date + datetime.timedelta(days=1)
-        db.shout(CMD, logging=logging, verbose=verbose)
-        try:
-            output = gt.execute(CMD,logging)
-            db.shout(output, logging=logging, verbose=verbose)
-            if 'Invalid date range' in str(output):
-                db.shout('Command unsuccessful (Invalid date range); trying alternate', logging=logging, verbose=verbose)
-                CMD = CMD.replace(TRA_CONFIG[variable]['nrt_service_id'],TRA_CONFIG[variable]['nrt_service_id'])
-                CMD = CMD.replace(TRA_CONFIG[variable]['nrt_product_id'],TRA_CONFIG[variable]['nrt_product_id'])
-                CMD = CMD.replace(TRA_CONFIG[variable]['nrt_url_root'],TRA_CONFIG[variable]['nrt_url_root']) 
-                db.shout(CMD, logging=logging, verbose=verbose)
-                output = gt.execute(CMD,logging)
-                db.shout(output, logging=logging, verbose=verbose)
-                db.shout('Command successful', logging=logging, verbose=verbose)
-            else:
-                db.shout('Command successful', logging=logging, verbose=verbose)
-        except:
-            db.shout('Command failed; proceeding to next iterate', \
-                     logging=logging, verbose=verbose)
+        D1_format = (this_date + datetime.timedelta(days=1) - datetime.timedelta(seconds=1)).strftime('%Y-%m-%d %H:%M:%S')
+        outname = f"{TRA_CONFIG[variable]['dt_product_id']}_{Dfname}.nc"
 
-    #getting file list:
+        # Build variable string
+        vars_list = TRA_CONFIG[variable]['vars']
+        var_flags = []
+        for vv in vars_list:
+            var_flags.extend(["-v", vv])
+
+        # Build CopernicusMarine subset command
+        CMD = [
+            "conda", "run", "-n", env_name, "copernicusmarine", "subset",
+            "-i", TRA_CONFIG[variable]['dt_product_id'],
+            "--start-datetime", D0_format,
+            "--end-datetime", D1_format,
+            "--minimum-longitude", str(COORDS_LIST[0]),
+            "--maximum-longitude", str(COORDS_LIST[1]),
+            "--minimum-latitude", str(COORDS_LIST[2]),
+            "--maximum-latitude", str(COORDS_LIST[3]),
+            "--minimum-depth", str(TRA_CONFIG[variable]['depth_range'][0]),
+            "--maximum-depth", str(TRA_CONFIG[variable]['depth_range'][1]),
+            "--username", TRA_CONFIG[variable]['EO_username'],
+            "--password", TRA_CONFIG[variable]['EO_password'],
+            "--output-directory", VAR_dir,
+            "--output-filename", outname
+        ] + var_flags
+
+        # Logging
+        if verbose:
+            print("Executing:", " ".join(CMD))
+        if logging:
+            logging.info("Executing: " + " ".join(CMD))
+
+        try:
+            subprocess.run(CMD, check=True)
+            if logging:
+                logging.info("Command successful")
+            if verbose:
+                print("Command successful")
+        except subprocess.CalledProcessError as e:
+            if logging:
+                logging.error(f"Command failed: {e}")
+            if verbose:
+                print(f"Command failed: {e}")
+
+        this_date += datetime.timedelta(days=1)
+
+    # Collect downloaded files
     match_files = []
     for root, _, filenames in os.walk(VAR_dir):
-        for filename in fnmatch.filter(filenames,\
-                                            '*.nc'):
-            db.shout('Adding '+os.path.join(root, filename)+\
-                     ' to file list', logging=logging, \
-                       verbose=verbose)
+        for filename in fnmatch.filter(filenames, '*.nc'):
+            if logging:
+                logging.info(f"Adding {os.path.join(root, filename)} to file list")
+            if verbose:
+                print(f"Adding {os.path.join(root, filename)} to file list")
             match_files.append(os.path.join(root, filename))
-    print(match_files)
+
     return sorted(match_files)
 
 def get_local(COORDS_LIST, D0, D1, TRA_CONFIG, variable, logging=None,\
