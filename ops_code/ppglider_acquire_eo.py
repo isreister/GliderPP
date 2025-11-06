@@ -17,6 +17,8 @@ import glob
 import warnings
 from netCDF4 import Dataset
 import configparser
+import code
+import pdb
 
 # add paths/tools
 import tools.database_tools as db
@@ -383,8 +385,8 @@ if __name__ == "__main__":
                          logging=logging, verbose=verbose)
 
                 today = "'"+datetime.datetime.now().strftime('%Y%m%d_%H%M')+"'"
-                print(database)
-                conn, c = db.connectDB(database)
+                print(database_name)
+                conn, c = db.connectDB(database_name)
                 for glider_dir in glider_dirs:
                     c.execute("UPDATE {tn} SET {sn} = 1 WHERE {fn} = {fm}".
                               format(tn=module_config['table_name'],
