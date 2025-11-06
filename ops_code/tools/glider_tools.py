@@ -339,17 +339,22 @@ def read_config_file(GLIDER_CONFIG, logging=None, verbose=False):
     return GLIDER_DICT
 
 def execute(command, logging=None):
-    process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, \
+    process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT)
-
     output = process.communicate()[0]
     exitCode = process.returncode
-    
-    if (exitCode == 0):
-        return output
-    else:
+
+    # Soft-fail handling for wget: allow exitCode!=0 if file got created
+    if exitCode != 0:
+        if "wget" in command:
+            import re, os
+            m = re.search(r"-O\s+(\S+)", command)
+            if m:
+                outfile = m.group(1)
+                if os.path.exists(outfile) and os.path.getsize(outfile) > 0:
+                    return output  # treat as success
         raise ConnectionError(command, exitCode, output)
-    process.wait()
+    return output
 
 def permit(myfile):
     os.chmod(myfile, 0o777)
