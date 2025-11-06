@@ -100,7 +100,7 @@ def get_remote(COORDS_LIST, D0, D1, TRA_CONFIG, variable, VAR_dir, \
         url = url.replace('$j', this_date.strftime('%j'))
 
         downloaded_tmp_file = os.path.join(
-            VAR_dir, os.path.basename(url).replace('.nc.nc', '.nc')
+            VAR_dir, os.path.basename(url).replace('.nc.dap.nc4', '.nc')
         )
 
         if os.path.exists(downloaded_tmp_file):
@@ -116,9 +116,8 @@ def get_remote(COORDS_LIST, D0, D1, TRA_CONFIG, variable, VAR_dir, \
         bashCommand = (
             f"wget --quiet --load-cookies {cookie_file} "
             f"--save-cookies {cookie_file} --keep-session-cookies "
-            f"--netrc-file {netrc_file} -O {local_download} {url}"
+            f"--netrc {netrc_file} -O {local_download} {url}"
         )
-
         db.shout(bashCommand, logging=logging, verbose=verbose)
         try:
             gt.execute(bashCommand, logging)
@@ -281,21 +280,24 @@ def get_CMEMS_remote(COORDS_LIST, D0, D1, TRA_CONFIG, variable, VAR_dir, env_nam
 
     return sorted(match_files)
 
-def get_local(COORDS_LIST, D0, D1, TRA_CONFIG, variable, logging=None,\
-              verbose=False):
-    #getting file list:
+def get_local(COORDS_LIST, D0, D1, TRA_CONFIG, variable, logging=None, verbose=False):
+    # getting file list:
     match_files = []
 
-    #need to date sort to be selective
+    # need to date sort to be selective
     for dd in np.arange(D0, D1, datetime.timedelta(days=1)):
-        match_str = dd.astype(datetime.datetime)\
-                             .strftime('%Y%m%d')+'*.nc'
-        for root, _, filenames in os.walk(TRA_CONFIG[variable]\
-                                                    ['local_path_root']):
-            for filename in fnmatch.filter(filenames,'*'+match_str):
-                db.shout('Adding '+os.path.join(root, filename)+\
-                         ' to file list', logging=logging, verbose=verbose)
-                match_files.append(os.path.join(root, filename))
+        dt = dd.astype(datetime.datetime)
+        # two possible date formats
+        match_strs = [
+            dt.strftime('%Y-%m-%d') + '*.nc',   # format: 2018-05-03
+            dt.strftime('%Y%m%d') + '*.nc'      # format: 20180503
+        ]
+        for root, _, filenames in os.walk(TRA_CONFIG[variable]['local_path_root']):
+            for match_str in match_strs:
+                for filename in fnmatch.filter(filenames, '*' + match_str):
+                    db.shout('Adding ' + os.path.join(root, filename) + ' to file list',
+                             logging=logging, verbose=verbose)
+                    match_files.append(os.path.join(root, filename))
 
     return sorted(match_files)
 
