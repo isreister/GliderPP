@@ -386,16 +386,16 @@ if __name__ == "__main__":
 
                 today = "'"+datetime.datetime.now().strftime('%Y%m%d_%H%M')+"'"
                 print(database_name)
-                conn, c = db.connectDB(database_name)
+                conn, c = db.connectDB(database_name)            
                 for glider_dir in glider_dirs:
                     c.execute("UPDATE {tn} SET {sn} = 1 WHERE {fn} = {fm}".
-                              format(tn=module_config['table_name'],
+                              format(tn=module_config['DATABASE']['table_name'],
                                      sn=module_config['EO_column'],
                                      fn=module_config['stage_dir_column'],
                                      fm='"'+glider_dir+'"'))
 
                     c.execute("UPDATE {tn} SET {sn} = {val} WHERE {fn} = {fm}".
-                              format(tn=module_config['table_name'],
+                              format(tn=module_config['DATABASE']['table_name'],
                                      sn=module_config['EO_column']+'_date',
                                      val=today,
                                      fn=module_config['stage_dir_column'],
