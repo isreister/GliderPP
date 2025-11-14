@@ -183,7 +183,7 @@ ii) Also had to update for changed to url template, and how wget works, and how 
 
 
 11/14/2025
-Got the ppglider_acquire_eo.py to run all the way through with no errors today! Woohoo!
+Got the ppglider_acquire_eo.py to runs but when I look at the log, it says interpolation failed. So I gotta figure out where that is happening.
 The final updates were modifigying the url tempplate for the KD_490 dap downloads, and then fixing a database update issue.
 
 
