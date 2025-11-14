@@ -22,7 +22,165 @@ conda activate ppglider
 and you can now run the pipeline with hopefully most of the python packages installed.
 
 10/29/2025
+i)
 Changed file path names in config_main_ini, specifically, 'preproc_dir=' to the correct file path name for my system.
+
+ii)
+Where you run a file matters. I ran: (ppglider) funkb@funkb-Legion-Pro-5-16ARX8:~/Documents/GliderPP/ops_code$ python ppglider_staging.py
+and got an ERROR:sqlite3.OperationalError: unable to open database file
+SOLUTION: run from (ppglider) funkb@funkb-Legion-Pro-5-16ARX8:~/Documents/GliderPP$ python ops_code/ppglider_staging.py
+In other words, run from the root ./GliderPP.
+
+iii) ncks is assumed to be installed on your linux system. I got this error:
+Reading: primary_prod_date
+Reading: primary_prod_dir
+Reading: primary_prod_files
+Reading: postproc
+Reading: postproc_date
+Reading: postproc_dir
+Reading: postproc_files
+Interpolating....
+Smoothing....
+Finding turning points....
+Split into 13513 profiles
+Assigning profile numbers....
+Splitting....
+/home/funkb/Documents/GliderPP/data/cabot_454_test.nc failed to stage
+
+The root of this ERROR was that the function called 'split_dive_index' has a dependency ncks which is a function inside the nco package, a package for handling netcdf files. 'split_dive_index'is defined in 'glider_tools.py' and used in ppglider_staging.py. The SOLUTION is to install nco with the command: sudo apt install nco
+
+
+iv)
+The running ppglider_acquire_eo.py requires that the cdsapi package be installed.
+ Othwerwise you will get the error:
+ModuleNotFoundError: No module named 'cdsapi'
+
+it also requires that credentials exist to access online satellite data. This means the creating a cdscred_eo.ini.
+This file should be located at home. it should be called whatever .ini file you would like to call it, designated by:
+It should contain: 
+[CREDENTIALS]
+EO_username = user
+EO_password = XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX <--- this is info from earth data login.
+
+or should it be isaacr91 and Forgetthis13!
+
+Also ppglider_acquire_eo.py runs off of ppglider_acquire_eo_config.py which has a climatology that must be complied and downloaded seperately. I created my climatolgoy with the approriate variables using copernicus. 
+
+
+v) aquireing the eo data can get very hairy very quickly. I got an error like this: 
+ppglider) funkb@funkb-Legion-Pro-5-16ARX8:~/Documents/GliderPP$ python ./ops_code/ppglider_acquire_eo.py
+RUNNING: WARNINGS ARE SUPPRESSED
+logging to: /home/funkb/Documents/GliderPP/logs/PPglider_acquire_EO_20251030_1542.log
+Reading: glider_type
+Reading: glider_prefix
+Reading: glider_number
+Reading: glider_name
+Reading: downloaded
+Reading: date_added
+Reading: file_downloaded
+Reading: staged
+Reading: staged_date
+Reading: staged_dir
+Reading: staged_files
+Reading: eo_acquire
+Reading: eo_acquire_state
+Reading: eo_acquire_date
+Reading: eo_acquire_dir
+Reading: eo_acquire_files
+Reading: preproc
+Reading: preproc_date
+Reading: preproc_dir
+Reading: preproc_files
+Reading: spectral
+Reading: spectral_date
+Reading: spectral_dir
+Reading: spectral_files
+Reading: corrected
+Reading: corrected_date
+Reading: corrected_dir
+Reading: corrected_files
+Reading: primary_prod
+Reading: primary_prod_date
+Reading: primary_prod_dir
+Reading: primary_prod_files
+Reading: postproc
+Reading: postproc_date
+Reading: postproc_dir
+Reading: postproc_files
+Found trajectory file
+Considering running cube generation for: ATMOS
+Data cube already present for ATMOS
+Considering running cube generation for: CHL
+Running cube generation for: CHL
+[]
+Considering running cube generation for: PAR
+Running cube generation for: PAR
+Traceback (most recent call last):
+  File "./ops_code/ppglider_acquire_eo.py", line 304, in <module>
+    match_files = dlt.get_remote(COORDS_LIST, D0, D1, 
+  File "/home/funkb/Documents/GliderPP/ops_code/tools/download_tools.py", line 123, in get_remote
+    os.rename(os.path.join(tmp_dir,os.path.basename(downloaded_tmp_file)), downloaded_tmp_file)
+FileNotFoundError: [Errno 2] No such file or directory: '/home/funkb/Documents/GliderPP/tmp/A2018123.L3m_DAY_PAR_par_4km.nc' -> './dap/PAR/A2018123.L3m_DAY_PAR_par_4km.nc'
+
+
+The SOLUTION was: 
+Problem:
+Downloading NASA OceanColor PAR (.nc) files failed because the original wget calls did not handle Earthdata authentication properly.
+wget requests were redirected through Earthdata’s OAuth system, requiring proper .netrc credentials and cookies.
+
+Solution Steps:
+Create a .netrc file with your Earthdata credentials:
+
+machine urs.earthdata.nasa.gov
+    login your_username
+    password your_password
+
+Saved with nano ~/.netrc and set permissions chmod 600 ~/.netrc.
+Modify download_tools.py (get_remote function):
+Added a wget command using .netrc and cookies for authentication:
+wget --quiet --load-cookies ~/.urs_cookies \
+     --save-cookies ~/.urs_cookies --keep-session-cookies \
+     --netrc-file ~/.netrc -O local_file.nc url
+
+
+Process the downloaded file locally:
+Subset the PAR file with ncks to the desired lat/lon box.
+Add a time dimension with ncap2.
+Create a record dimension using ncecat.
+Rename and store in the target directory with proper permissions.
+
+Result:
+PPGlider successfully downloads PAR files from NASA OceanColor.
+Files are automatically subset, time-tagged, and ready for concatenation into a data cube.
+
+✅ Key points:
+
+.netrc + wget handles Earthdata authentication.
+Processing remains local to avoid repeated downloads or permission issues.
+This framework can be extended to other NASA or CMEMS datasets.
+
+
+
+vi) I had particular trouble getting the CHL cube to form. The Chl uses a different satellite host, which is CMEMS. CMEMS require the python package motuclient to be installed. Error for this looked like:
+FileNotFoundError: [Errno 2] No such file or directory: '/home/funkb/Documents/GliderPP/EO_data/ego_454_cabot/CHL_CMEMS.nc'. Turns out the .nc file was not being created. This was because motu is outdated. Links here for example, failed.
+In fact motu capabilities were transferred to Copernicus Marine Store. and that requires a different log
+
+11/1/2025
+
+i) Had a lot of ERRORS like this:
+
+ERROR: ==> stderr <==
+INFO - 2025-11-01T18:23:54Z - Selected dataset version: "202506"
+INFO - 2025-11-01T18:23:54Z - Selected dataset part: "default"
+ERROR - 2025-11-01T18:23:54Z - Some of your subset selection [2018-07-08 06:38:58+00:00, 2018-07-09 06:38:57+00:00] for the time dimension exceed the dataset coordinates [2024-07-01 00:00:00+00:00, 2025-11-01 00:00:00+00:00]
+
+Needed to update the EO dataset that ppglider_acquire_eo_config.py used.
+
+ii) Also had to update for changed to url template, and how wget works, and how wget is executed.
+
+
+
+
 
 
 
