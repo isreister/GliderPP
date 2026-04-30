@@ -23,58 +23,80 @@ from . import database_tools as db
 
 
 def get_ecmwf(COORDS_LIST, D0, D1, var_file, clim=False, logging=None,\
-        verbose=False):
+        verbose=False, lat_lon_pad=1.0):
 
-    c       = cdsapi.Client()
-    area    = [float(COORDS_LIST[3]),\
-               float(COORDS_LIST[0]),\
-               float(COORDS_LIST[2]),\
-               float(COORDS_LIST[1])] #N/W/S/E
+    c = cdsapi.Client()
 
-    Dc = D0
-    while Dc < D1:
-        print(Dc)
-        ecmwf_dict = ecmwf_cfg(Dc, area)
-        print(ecmwf_dict)
-        print(var_file)
-        c.retrieve('reanalysis-era5-single-levels', ecmwf_dict, var_file)
-        Dc = D1 + datetime.timedelta(year=1)
+    # COORDS_LIST is [W, E, S, N, t0, t1] — pad to ensure interpolation neighbours.
+    N = float(COORDS_LIST[3]) + lat_lon_pad
+    S = float(COORDS_LIST[2]) - lat_lon_pad
+    W = float(COORDS_LIST[0]) - lat_lon_pad
+    E = float(COORDS_LIST[1]) + lat_lon_pad
+    area = [N, W, S, E]
 
-def ecmwf_cfg(Dc,area):
+    if D0.year != D1.year:
+        raise NotImplementedError(
+            'Multi-year ATMOS download not yet supported; deployment {}–{} spans years.'\
+            .format(D0.isoformat(), D1.isoformat())
+        )
 
-    area_formatted  = str(area[0])+'/'+\
-                     str(area[1])+'/'+\
-                     str(area[2])+'/'+\
-                     str(area[3])
+    # Per-month retrieves to stay under CDS-Beta cost limits, then concat with ncrcat.
+    tmp_dir = os.path.join(os.path.dirname(var_file), 'atmos_tmp')
+    if os.path.exists(tmp_dir):
+        shutil.rmtree(tmp_dir)
+    os.makedirs(tmp_dir)
+
+    month_files = []
+    year = D0.year
+    for month in range(D0.month, D1.month + 1):
+        month_file = os.path.join(tmp_dir, 'ATMOS_ECMWF_{}_{:02d}.nc'.format(year, month))
+        ecmwf_dict = ecmwf_cfg(year, month, area)
+        if logging is not None:
+            logging.info('CDS request (year=%d, month=%d): %s', year, month, ecmwf_dict)
+            logging.info('CDS target file: %s', month_file)
+        print('Retrieving ATMOS for {}-{:02d}'.format(year, month))
+        c.retrieve('reanalysis-era5-single-levels', ecmwf_dict, month_file)
+        month_files.append(month_file)
+
+    # Concat months along valid_time dim. ncrcat needs a record dim — make valid_time one.
+    rec_files = []
+    for mf in month_files:
+        rec_file = mf.replace('.nc', '_rec.nc')
+        cmd = 'ncks -O --mk_rec_dmn valid_time {} {}'.format(mf, rec_file)
+        if logging is not None:
+            logging.info(cmd)
+        gt.execute(cmd, logging)
+        rec_files.append(rec_file)
+
+    cmd = 'ncrcat -O {} {}'.format(' '.join(sorted(rec_files)), var_file)
+    if logging is not None:
+        logging.info(cmd)
+    gt.execute(cmd, logging)
+
+    shutil.rmtree(tmp_dir)
+
+def ecmwf_cfg(year, month, area):
+
+    days   = ['{:02d}'.format(d) for d in range(1, 32)]
+    hours  = ['{:02d}:00'.format(h) for h in range(24)]
 
     ecmwf_dict = {'product_type': 'reanalysis',
-                'format': 'netcdf',
+                'data_format': 'netcdf',
+                'download_format': 'unarchived',
                 'variable': [
                 '10m_u_component_of_wind',
-                '10m_v_component_of_wind', 
+                '10m_v_component_of_wind',
                 '2m_dewpoint_temperature',
                 '2m_temperature',
                 'mean_sea_level_pressure',
                 'total_cloud_cover',
                 'total_column_ozone',
                 'total_column_water_vapour'],
-                'year': str(Dc.year),
-                'month': ['01', '02', '03',
-                        '04', '05', '06',
-                        '07', '08', '09',
-                        '10', '11', '12'],
-                'day': ['01', '02', '03',
-                        '04', '05', '06',
-                        '07', '08', '09',
-                        '10', '11', '12',
-                        '13', '14', '15',
-                        '16', '17', '18',
-                        '19', '20', '21',
-                        '22', '23', '24',
-                        '25', '26', '27',
-                        '28', '29', '30', '31' ],
-                'time': ['12:00'],
-                'area': [area_formatted]}
+                'year': str(year),
+                'month': '{:02d}'.format(month),
+                'day': days,
+                'time': hours,
+                'area': area}
 
     return ecmwf_dict
 
