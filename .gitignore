@@ -3,14 +3,29 @@
 /databases
 /backups
 /logs
+/staged
+/EO_data
+/dap
 
 # Python build objects
 .ipynb_checkpoints
 **/__pycache__
 *.py[cod]
 
-#OSx rubbish
+# OSx rubbish
 .DS_Store
 
-#Data files
+# Data files
 *.nc
+
+# Debug plots (per-profile diagnostic PNGs from preproc / spectral)
+cabot_*_st_fin_xing.png
+*_st_fin_xing.png
+
+# Editor / IDE configuration (user-local)
+.vscode/
+.idea/
+
+# AI assistant runtime state
+.claude/
+.github/copilot-instructions.md
