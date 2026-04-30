@@ -66,11 +66,10 @@ if __name__ == "__main__":
     # preliminary stuff
     LOGFILE = os.path.join(ARGS.log_path,"PPglider_acquire_EO_"+
               datetime.datetime.now().strftime('%Y%m%d_%H%M')+".log")
-
     # make required log directory if it does not exist
     if not os.path.exists(os.path.abspath(ARGS.log_path)):
         os.makedirs(ARGS.log_path)
-
+    
     # set file logger
     try:
         if os.path.exists(LOGFILE):
@@ -230,6 +229,7 @@ if __name__ == "__main__":
 
         # loop through EO types to download/augment EO data cubes
         count = -1
+        cube_is_clim = {}
         for variable in variables:
             if not tra_config[variable]['include']:
                 print('Skipping cube generation for: '+variable)
@@ -279,9 +279,14 @@ if __name__ == "__main__":
                     try:
                         dlt.get_ecmwf(COORDS_LIST, D0, D1, var_file,
                                       logging=logging, verbose=verbose)
-                    except:
+                    except Exception as e:
+                        logging.exception('ECMWF download failed for ATMOS: %s', e)
+                        print('ECMWF download failed for ATMOS: '+str(e))
                         if tra_config[variable]['NRT_clim']:
+                            print('Falling back to climatology: '+tra_config[variable]['clim_file'])
+                            logging.info('Falling back to climatology: %s', tra_config[variable]['clim_file'])
                             shutil.copy(tra_config[variable]['clim_file'], var_file)
+                            cube_is_clim[variable] = True
                         else:
                             print('Cannot process ATMOS, NRT data not available and no backup climatology set')
 
@@ -321,6 +326,7 @@ if __name__ == "__main__":
                         if tra_config[variable]['NRT_clim']:
                             logging.info('Replaced with climatology')
                             shutil.copy(tra_config[variable]['clim_file'], var_file)
+                            cube_is_clim[variable] = True
                         else:
                             match_files = dlt.get_local(COORDS_LIST, D0, D1, 
                                           tra_config, variable, 
@@ -366,10 +372,9 @@ if __name__ == "__main__":
             db.shout('Flying glider through: '+nc_concat_file, logging=logging, 
                       verbose=verbose)
 
-            if tra_config[variable]['NRT_clim']:
-                clim = True
-            else:
-                clim = False
+            # NRT_clim is the *fallback* flag — only set clim=True when the cube
+            # actually was sourced from the climatology file in this run.
+            clim = cube_is_clim.get(variable, False)
 
             success = gt.fly_cube(variable, tra_config, GLIDER_CONFIG, 
                         module_config, nc_concat_file, nc_outfile, 
@@ -386,19 +391,19 @@ if __name__ == "__main__":
 
                 today = "'"+datetime.datetime.now().strftime('%Y%m%d_%H%M')+"'"
                 print(database_name)
-                conn, c = db.connectDB(database_name)            
+                conn, c = db.connectDB(database_name)
                 for glider_dir in glider_dirs:
                     c.execute("UPDATE {tn} SET {sn} = 1 WHERE {fn} = {fm}".
                               format(tn=module_config['DATABASE']['table_name'],
-                                     sn=module_config['EO_column'],
-                                     fn=module_config['stage_dir_column'],
+                                     sn='eo_acquire',
+                                     fn='staged_dir',
                                      fm='"'+glider_dir+'"'))
 
                     c.execute("UPDATE {tn} SET {sn} = {val} WHERE {fn} = {fm}".
                               format(tn=module_config['DATABASE']['table_name'],
-                                     sn=module_config['EO_column']+'_date',
+                                     sn='eo_acquire_date',
                                      val=today,
-                                     fn=module_config['stage_dir_column'],
+                                     fn='staged_dir',
                                      fm='"'+glider_dir+'"'))
                     conn.commit()
                 conn.close()
