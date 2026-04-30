@@ -46,6 +46,15 @@ DEFAULT_LOG_PATH = os.path.join(OUT_ROOT, 'logs')
 DEFAULT_CFG_DIR = os.path.join(OUT_ROOT, 'configs')
 DEFAULT_CFG_FILE = os.path.join(DEFAULT_CFG_DIR, 'config_main.ini')
 
+# Sanity bounds for E0p (surface broadband PAR, W/m^2) and Ed_scale.
+# Real surface PAR maxes around ~500 W/m^2 at low-latitude noon. 2000 is a
+# generous upper bound that still catches obvious junk (e.g. 1.7e10 W/m^2
+# values seen on a few profiles where preprocess_dive's PAR extrapolation
+# blew up). Treat anything beyond these limits as an unreliable profile and
+# fall back to ed_scale=1.0 so corrupted values don't propagate to PP.
+E0P_MAX = 2000.0
+ED_SCALE_MAX = 100.0
+
 # Pure-seawater attenuation coefficients for the standard 400-700 nm @ 5 nm
 # grid the GC90 binary emits. Lifted verbatim from the original
 # project_spectral_PAR.py (Loveday 2017). Indexed by wavelength bin.
@@ -229,8 +238,24 @@ def process_station(station_id, suffix, pp_dir, out_dir,
     ed_total_modelled = simps(ed, dx=5)
     if e0p <= 0.0 or not np.isfinite(e0p) or ed_total_modelled <= 0.0:
         ed_scale = 1.0
+    elif e0p > E0P_MAX:
+        if logging is not None:
+            logging.warning(
+                'Station %s: E0p=%.3e W/m^2 exceeds %.1f sanity bound; '
+                'treating profile as unreliable, ed_scale=1.0',
+                station_id, e0p, E0P_MAX)
+        ed_scale = 1.0
     else:
         ed_scale = e0p / ed_total_modelled
+        if ed_scale > ED_SCALE_MAX:
+            if logging is not None:
+                logging.warning(
+                    'Station %s: ed_scale=%.3e exceeds %.1f sanity bound '
+                    '(E0p=%.3f, Ed_total_modelled=%.3e); treating profile '
+                    'as unreliable, ed_scale=1.0',
+                    station_id, ed_scale, ED_SCALE_MAX, e0p,
+                    ed_total_modelled)
+            ed_scale = 1.0
     ed_new = ed * ed_scale
 
     # Read profile data: each row is "HH:MM depth value".
