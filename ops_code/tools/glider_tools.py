@@ -970,8 +970,10 @@ def fly_cube(variable, TRA_CONFIG, GLIDER_CONFIG, MODULE_DICT, nc_concat_file,\
                               GLIDER_DICT['profile_var'],
                               nc_outfile, logging=logging,\
                               verbose=verbose)
-    except:
-        db.shout('Interpolation failed', logging=logging, verbose=verbose)
+    except Exception as e:
+        if logging is not None:
+            logging.exception('Interpolation failed for %s: %s', variable, e)
+        db.shout('Interpolation failed: '+repr(e), logging=logging, verbose=verbose)
         success = False
 
     return success
@@ -1021,7 +1023,7 @@ def preprocess_dive(nc_file, GLIDER_CONFIG, traj_PAR, traj_KD490, traj_CHLA, gli
 
     # -get the variable names for comparison to config list
     nc_fid  = Dataset(nc_file, 'r')
-    nc_vars = list(data_fid.variables.keys())
+    nc_vars = list(nc_fid.variables.keys())
 
     # -get the vars-----------------------------------------------------------
     var_dict = {}
@@ -1625,9 +1627,9 @@ def derive_atmos_vars(MODULE_DICT, nc_file, variable, TRA_CONFIG, lat_EO, \
             MSLP = VAR/100
         elif ECMWF_var == 'tco3':
             # rough conversion to Dobson (assume STP)
-            O3 = VAR * 1000 / float(MODULE_DICT['O3_mol']) \
-                 *float(MODULE_DICT['avogadro']) \
-                 /float(MODULE_DICT['Dobson_conversion'])
+            O3 = VAR * 1000 / float(MODULE_DICT['EO_ACQUIRE']['O3_mol']) \
+                 *float(MODULE_DICT['EO_ACQUIRE']['avogadro']) \
+                 /float(MODULE_DICT['EO_ACQUIRE']['Dobson_conversion'])
         elif ECMWF_var == 'tcwv':
             # rough conversion to cm.cm-2 (assume STP)
             TCWV = VAR / (100*100)*1000
