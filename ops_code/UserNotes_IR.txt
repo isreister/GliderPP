@@ -187,7 +187,115 @@ Got the ppglider_acquire_eo.py to runs but when I look at the log, it says inter
 The final updates were modifigying the url tempplate for the KD_490 dap downloads, and then fixing a database update issue.
 
 
+04/30/2026
+Major session: tracked down the "interpolation failed" message from 11/14, and
+ported the missing preproc + spectral pipeline stages back from git history
+(they were dropped in Ben Loveday's 2022 rebuild commit 2ec12f5; full versions
+existed in the 2020 commit aa5ddf5).
 
+i) Root cause of "interpolation failed" for ATMOS in ppglider_acquire_eo.py:
+   - The cube file ATMOS_ECMWF.nc on disk was a byte-identical copy of the
+     ERAI_monthly_climatology.nc fallback (5 GB, monthly, 1990-2025 global).
+     The CDS download had been silently failing every run because of a bare
+     `except:` in ppglider_acquire_eo.py around line 281 that fell through to
+     `shutil.copy(clim_file, var_file)`.
+   - Three bugs in tools/download_tools.py made the CDS request fail:
+       (a) 'area' was passed as `[area_formatted]` (one slash-joined string)
+           — old CDS API style. CDS-Beta wants a flat list [N, W, S, E].
+       (b) 'format': 'netcdf' is deprecated; new endpoint wants 'data_format'.
+       (c) Loop terminator `Dc = D1 + datetime.timedelta(year=1)` raises
+           TypeError (timedelta has no `year` kwarg).
+   - Plus the per-glider config had only `'time': ['12:00']` and pulled all 12
+     months of the year regardless of deployment window.
 
+ii) Fixes applied so the ATMOS download actually runs:
+   - Rewrote get_ecmwf + ecmwf_cfg in tools/download_tools.py to do per-month
+     retrievals (CDS-Beta rejects single-shot all-months as "cost limits
+     exceeded"), with hourly time steps, [N,W,S,E] area list with +/-1 deg
+     padding, and ncks --mk_rec_dmn valid_time + ncrcat for concatenation.
+   - Replaced the bare except in ppglider_acquire_eo.py with a logged
+     exception so future failures aren't silent.
+   - Updated ppglider_acquire_eo_config.py ATMOS section: t_var='valid_time',
+     t_ref='1970-01-01 00:00:00', t_base='seconds' to match the modern CDS
+     NetCDF schema (CDS-Beta renamed `time` to `valid_time` in late 2024).
+
+iii) Once ATMOS download succeeded, fly_cube still failed. Two more bugs:
+   - tools/glider_tools.py line ~1630: `MODULE_DICT['O3_mol']` raised KeyError
+     because MODULE_DICT is a sectioned ConfigParser. Fixed to
+     `MODULE_DICT['EO_ACQUIRE']['O3_mol']` (and similarly for `avogadro` and
+     `Dobson_conversion`).
+   - ppglider_acquire_eo.py was setting `clim=True` whenever NRT_clim was
+     true in the config — but NRT_clim is the *fallback* flag, not "this
+     variable IS climatology". This forced fly_cube into the 14-month
+     wrap-around branch instead of using the real 2952-step ERA5 file.
+     Added a `cube_is_clim` dict that's only set when the climatology fallback
+     actually fires, and pass that as `clim` to fly_cube.
+   - Also replaced `module_config['EO_column']` / `['stage_dir_column']` lookups
+     in the DB-update path with literal `'eo_acquire'` / `'staged_dir'` (matching
+     how ppglider_staging.py does it).
+   - Result: ATMOS_ECMWF_traj.nc generated cleanly with WSPD/CLOUD/MSLP/O3/
+     TCWV/RH for all 13,514 glider profiles.
+
+iv) Wrote ppglider_preproc.py (270 lines, new file in ops_code/).
+   - Ported from operational_code/AlterEco_preprocessing.py in the deleted
+     2020 commit aa5ddf5 (`git show aa5ddf5:operational_code/AlterEco_preprocessing.py`).
+   - Adapted to current conventions: ConfigParser instead of homemade INI
+     parser, tools.database_tools (current name) instead of db_tools, sectioned
+     config access, literal column names matching ppglider_staging.py style.
+   - Made bathymetry optional: added a `bathy_file=` config entry under
+     [EO_ACQUIRE] in config_main.ini. If the file is missing or empty, falls
+     back to a NaN bathy array (preprocess_dive tolerates it).
+   - Bug fix: tools/glider_tools.py line 1026 had `data_fid` (undefined
+     variable) where it should have been `nc_fid`. This typo from the 2022
+     rebuild would have crashed preprocess_dive on its first NetCDF read --
+     no one had caught it because the function was never being called.
+   - Result: 13,514 preprocessed NetCDFs in data/EO_preprocess/ego_454_cabot/
+     plus 32,454 text-format input files (chl_profile, par_profile, telemetry
+     triples) in data/EO_preprocess/pp/ego_454_cabot/. Throughput about
+     7 profiles/sec, full deployment in ~30 min.
+
+v) Wrote ppglider_spectral.py (280 lines, new file in ops_code/).
+   - Ported from operational_code/project_spectral_PAR.py and STAGE 4 of
+     operational_code/Process_PP_gliders.run in the same 2020 commit aa5ddf5.
+   - Uses the precompiled GC90 `par` binary at models/bin/linux/par. Note that
+     the binary requires LD_LIBRARY_PATH=models/lib/linux to find
+     libproof_shared.so. The driver sets this env var per subprocess call.
+   - Inlined the spectral_par_depth attenuation logic and the chl/Ed scaling
+     loop directly in the driver (no separate helper module), and dropped the
+     debug-only matplotlib/basemap/cmocean imports from the original.
+   - Added [SPECTRAL] section to config_main.ini with par_binary, par_lib_dir,
+     gcirrad_data, time_step, and spectral_dir paths.
+   - For each daytime station (is_day=1 in telemetry):
+       1. Run `par` binary → ed_station_NNNNNN_xing.txt (321 KB irradiance)
+                          + zen_station_NNNNNN_xing.txt (3 KB zenith angles)
+       2. Read glider's measured PAR profile + CHL profile (text outputs from
+          preproc).
+       3. Compute Ed_scale = E0p_glider / Ed_total_modelled.
+       4. Sweep CHL_scale in [0.2, 25, 0.2] to minimize RMSE between depth-
+          projected modelled PAR and measured PAR.
+       5. Write scale_station_NNNNNN_xing.txt with both factors.
+   - Of 10,818 complete stations, 7,670 are daytime and were processed
+     successfully. Outputs in data/EO_preprocess/spectral/ego_454_cabot/.
+
+vi) State of the pipeline at end of session:
+       init_db        ppglider_init_db.py        WORKING
+       autodownload   ppglider_autodownload.py   N/A (using local data per
+                                                       UserNote i above)
+       staging        ppglider_staging.py        WORKING
+       acquire_eo     ppglider_acquire_eo.py     WORKING after today's fixes
+       preproc        ppglider_preproc.py        NEW, working end-to-end
+       spectral       ppglider_spectral.py       NEW, working end-to-end
+       corrected      apply_Chl_Ed_corrections.py — not yet ported (in 2020
+                                                  commit aa5ddf5)
+       primary_prod   morel91 binary call         — not yet ported (binary at
+                                                  models/bin/linux/morel91)
+       postproc       postprocess_gliders.py     — not yet ported
+
+vii) Note for next session: the cube-fly skip path in ppglider_acquire_eo.py
+   does not update the `eo_acquire` DB column when trajectory files already
+   exist (it just continues). Had to manually flip eo_acquire=1 in the DB
+   before preproc would run. Worth fixing if/when re-running on a fresh
+   deployment — should mark eo_acquire=1 if the *_traj.nc files exist for
+   every requested variable.
 
 
