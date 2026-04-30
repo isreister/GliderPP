@@ -12,7 +12,7 @@ c.execute("""
 INSERT INTO PPglider_processing_stages
 (glider_type, glider_prefix, glider_number, glider_name, downloaded, date_added, file_downloaded, staged)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-""", ("seaglider", "ego", "454", "cabot", 1, datetime.now().strftime("%Y%m%d"), r"/home/funkb/Documents/Python/GliderPP/data/Cabot_454_test.nc", 0))
+""", ("seaglider", "ego", "454", "cabot", 1, datetime.now().strftime("%Y%m%d"), r"/home/funkb/Documents/GliderPP/data/cabot_454_test.nc", 0))
 
 conn.commit()
 conn.close()
