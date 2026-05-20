@@ -332,7 +332,8 @@ if __name__ == "__main__":
     print('logging to: ' + LOGFILE)
     logging.basicConfig(filename=LOGFILE, level=logging.DEBUG)
 
-    module_config = configparser.ConfigParser(allow_no_value=True)
+    module_config = configparser.ConfigParser(allow_no_value=True,
+                                              interpolation=configparser.ExtendedInterpolation())
     module_config.read(ARGS.config_file)
 
     database_name = os.path.join(

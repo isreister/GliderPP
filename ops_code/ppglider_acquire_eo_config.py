@@ -20,6 +20,14 @@ module_config.read(os.path.join(os.path.expanduser("~"), '.cdscred_eo.ini'))
 EO_username = module_config['CREDENTIALS']['EO_username']
 EO_password = module_config['CREDENTIALS']['EO_password']
 
+# read the main pipeline config so storage paths (e.g. the ATMOS climatology)
+# track ${PATHS:data_root} and don't need editing here when relocating data.
+_main_config = configparser.ConfigParser(allow_no_value=True,
+                                         interpolation=configparser.ExtendedInterpolation())
+_OUT_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+_main_config.read(os.path.join(_OUT_ROOT, 'configs', 'config_main.ini'))
+_ERAI_CLIM = _main_config['EO_ACQUIRE'].get('clim_file', None)
+
 # Vstep is ignored for log values
 tra_config = {'CHL' : {'source':'CMEMS',
                        'local_path_root':None, #'/home/funkb/Documents/GliderPP/dap/CHL',  # local path root. useful if you have local copies already (either from previous download or in another directory)
@@ -195,7 +203,7 @@ tra_config = {'CHL' : {'source':'CMEMS',
                        'calc_vars':['WSPD','CLOUD','MSLP','O3','TCWV','RH'],
                        'include' : True,
                        'NRT_clim' : True,
-                       'clim_file' : '/home/funkb/Documents/GliderPP/data/Climatology/ERAI_monthly_climatology.nc'},
+                       'clim_file' : _ERAI_CLIM},
 
              }
 #EOF

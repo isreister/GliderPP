@@ -81,7 +81,8 @@ if __name__ == "__main__":
         sys.exit()
 
     # read processing config file
-    module_config = configparser.ConfigParser(allow_no_value=True)
+    module_config = configparser.ConfigParser(allow_no_value=True,
+                                              interpolation=configparser.ExtendedInterpolation())
     module_config.read(ARGS.config_file)
 
     # set database names

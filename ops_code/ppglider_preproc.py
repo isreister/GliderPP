@@ -173,7 +173,8 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # read processing config
-    module_config = configparser.ConfigParser(allow_no_value=True)
+    module_config = configparser.ConfigParser(allow_no_value=True,
+                                              interpolation=configparser.ExtendedInterpolation())
     module_config.read(ARGS.config_file)
 
     database_name = os.path.join(
