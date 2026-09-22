@@ -132,7 +132,7 @@ if __name__ == "__main__":
     database_name = os.path.join(
         os.path.abspath(cfg['DIRECTORIES']['database_dir']),
         cfg['DATABASE']['database_name'])
-    preproc_root = os.path.abspath(cfg['EO_ACQUIRE']['preproc_dir'])
+    preproc_text_root = os.path.abspath(cfg['EO_ACQUIRE']['preproc_text_dir'])
     spectral_root = os.path.abspath(cfg['SPECTRAL']['spectral_dir'])
     corrected_root = os.path.abspath(cfg['CORRECTED']['corrected_dir'])
     pp_root = os.path.abspath(cfg['PRIMARY_PROD']['primary_prod_dir'])
@@ -183,7 +183,7 @@ if __name__ == "__main__":
                      logging=logging, verbose=verbose)
             continue
 
-        pp_dir = os.path.join(preproc_root, 'pp', glider_tag)
+        pp_dir = os.path.join(preproc_text_root, glider_tag)
         spectral_dir = os.path.join(spectral_root, glider_tag)
         corrected_dir = os.path.join(corrected_root, glider_tag)
         out_dir = os.path.join(pp_root, glider_tag)

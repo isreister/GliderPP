@@ -183,6 +183,8 @@ if __name__ == "__main__":
     staged_root = os.path.abspath(module_config['DIRECTORIES']['staged_dir'])
     eo_root = os.path.abspath(module_config['DIRECTORIES']['eo_dir'])
     preproc_root = os.path.abspath(module_config['EO_ACQUIRE']['preproc_dir'])
+    preproc_text_root = os.path.abspath(
+        module_config['EO_ACQUIRE']['preproc_text_dir'])
     bathy_file = module_config['EO_ACQUIRE'].get('bathy_file', '') or ''
 
     if not os.path.exists(preproc_root):
@@ -245,7 +247,7 @@ if __name__ == "__main__":
             os.makedirs(preproc_dir)
             os.chmod(preproc_dir, 0o777)
 
-        text_dir = os.path.join(preproc_root, 'pp', glider_tag)
+        text_dir = os.path.join(preproc_text_root, glider_tag)
         if not os.path.exists(text_dir):
             os.makedirs(text_dir)
             os.chmod(text_dir, 0o777)

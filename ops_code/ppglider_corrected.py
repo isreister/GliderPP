@@ -214,7 +214,8 @@ if __name__ == "__main__":
         os.path.abspath(module_config['DIRECTORIES']['database_dir']),
         module_config['DATABASE']['database_name'])
     spectral_root = os.path.abspath(module_config['SPECTRAL']['spectral_dir'])
-    preproc_root = os.path.abspath(module_config['EO_ACQUIRE']['preproc_dir'])
+    preproc_text_root = os.path.abspath(
+        module_config['EO_ACQUIRE']['preproc_text_dir'])
     corrected_root = os.path.abspath(module_config['CORRECTED']['corrected_dir'])
     smooth_window = int(module_config['CORRECTED']['chl_smooth_window_days'])
 
@@ -248,7 +249,7 @@ if __name__ == "__main__":
             continue
 
         spectral_dir = os.path.join(spectral_root, glider_tag)
-        pp_dir = os.path.join(preproc_root, 'pp', glider_tag)
+        pp_dir = os.path.join(preproc_text_root, glider_tag)
         out_dir = os.path.join(corrected_root, glider_tag)
         if not os.path.isdir(spectral_dir):
             db.shout(f'{glider_tag}: spectral dir missing: {spectral_dir}',

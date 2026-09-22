@@ -339,7 +339,8 @@ if __name__ == "__main__":
     database_name = os.path.join(
         os.path.abspath(module_config['DIRECTORIES']['database_dir']),
         module_config['DATABASE']['database_name'])
-    preproc_root = os.path.abspath(module_config['EO_ACQUIRE']['preproc_dir'])
+    preproc_text_root = os.path.abspath(
+        module_config['EO_ACQUIRE']['preproc_text_dir'])
     spectral_root = os.path.abspath(module_config['SPECTRAL']['spectral_dir'])
     par_binary = module_config['SPECTRAL']['par_binary']
     par_lib_dir = module_config['SPECTRAL']['par_lib_dir']
@@ -385,7 +386,7 @@ if __name__ == "__main__":
             continue
 
         # per-glider preproc text dir (matches ppglider_preproc.py layout)
-        pp_dir = os.path.join(preproc_root, 'pp', glider_tag)
+        pp_dir = os.path.join(preproc_text_root, glider_tag)
         if not os.path.isdir(pp_dir):
             db.shout(f'{glider_tag}: no preproc text dir at {pp_dir}',
                      logging=logging, verbose=True)
