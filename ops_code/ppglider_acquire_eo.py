@@ -130,9 +130,7 @@ if __name__ == "__main__":
         EO_dir = os.path.join(os.path.abspath(module_config['DIRECTORIES']['eo_dir']), glider_tag)
         boundary_file = os.path.join(EO_dir, 'boundaries.txt')
 
-        if not os.path.exists(EO_dir):
-            if not os.path.exists(os.path.dirname(EO_dir)):
-                os.makedirs(EO_dir)
+        os.makedirs(EO_dir, exist_ok=True)
 
         # check for trajectory file & make if required
         trajectory_file = os.path.join(EO_dir, glider_tag+'_trajectory.nc')
